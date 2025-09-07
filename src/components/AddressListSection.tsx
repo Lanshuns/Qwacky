@@ -1,7 +1,10 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import styled from 'styled-components';
 import { MdVisibility, MdVisibilityOff, MdEdit, MdCheck, MdClose, MdDelete, MdDeleteSweep } from "react-icons/md";
 import { ConfirmDialog } from './ConfirmDialog';
+import { StorageService } from '../services/StorageService';
+
+const storageService = new StorageService();
 
 const Section = styled.div`
   margin-bottom: 32px;
@@ -213,7 +216,19 @@ export const AddressListSection: React.FC<AddressListSectionProps> = ({
   }, [onClearAllAddresses]);
 
   const toggleHideAddresses = useCallback(() => {
-    setHideAddresses(prev => !prev);
+    setHideAddresses(prev => {
+      const newState = !prev;
+      storageService.setHideGeneratedAddresses(newState);
+      return newState;
+    });
+  }, []);
+
+  useEffect(() => {
+    const fetchHideAddresses = async () => {
+      const storedHide = await storageService.getHideGeneratedAddresses();
+      setHideAddresses(storedHide);
+    };
+    fetchHideAddresses();
   }, []);
 
   const addressList = useMemo(() => {
