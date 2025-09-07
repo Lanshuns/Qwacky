@@ -180,7 +180,7 @@ export const Login = ({ onSubmit, isAddingAccount, onBack }: LoginProps) => {
       </Button>
       {error && <ErrorMessage>{error}</ErrorMessage>}
       <VersionInfo>
-        Qwacky v1.2.0
+        Qwacky v1.2.1
       </VersionInfo>
     </Container>
   )
