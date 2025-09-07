@@ -245,4 +245,13 @@ export class StorageService {
   async clearStorage(): Promise<void> {
     await chrome.storage.local.clear();
   }
+
+  async getHideUserInfo(): Promise<boolean> {
+    const result = await chrome.storage.local.get('hide_user_info');
+    return result.hide_user_info || false;
+  }
+
+  async setHideUserInfo(hide: boolean): Promise<void> {
+    await chrome.storage.local.set({ hide_user_info: hide });
+  }
 }
