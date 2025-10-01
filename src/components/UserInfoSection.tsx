@@ -1,7 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect} from 'react';
 import styled from 'styled-components';
 import { MdVisibility, MdVisibilityOff } from 'react-icons/md';
 import { UserData } from '../types';
+import { StorageService } from '../services/StorageService';
+
+const storageService = new StorageService();
 
 const Section = styled.div`
   margin-bottom: 32px;
@@ -76,11 +79,23 @@ export const UserInfoSection: React.FC<UserInfoSectionProps> = ({
   copyToClipboard 
 }) => {
   const [hideUserInfo, setHideUserInfo] = useState(false);
+  useEffect(() => {
+    const fetchHideUserInfo = async () => {
+      const storedHideUserInfo = await storageService.getHideUserInfo();
+      setHideUserInfo(storedHideUserInfo);
+    };
+
+    fetchHideUserInfo();
+  }, []);
 
   const maskText = (text: string) => "*".repeat(text.length);
 
   const toggleHideUserInfo = useCallback(() => {
-    setHideUserInfo(prev => !prev);
+    setHideUserInfo(prev => {
+      const newState = !prev;
+      storageService.setHideUserInfo(newState);
+      return newState;
+    });
   }, []);
 
   return (

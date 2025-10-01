@@ -9,7 +9,7 @@ import { Header } from './components/Header'
 import { theme } from './theme'
 import { useState, useEffect } from 'react'
 
-const APP_VERSION = '1.2.0'
+const APP_VERSION = '1.2.1'
 
 const Container = styled.div`
   width: 360px;

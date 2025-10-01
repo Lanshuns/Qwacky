@@ -245,4 +245,22 @@ export class StorageService {
   async clearStorage(): Promise<void> {
     await chrome.storage.local.clear();
   }
+
+  async getHideUserInfo(): Promise<boolean> {
+    const result = await chrome.storage.local.get('hide_user_info');
+    return result.hide_user_info || false;
+  }
+
+  async setHideUserInfo(hide: boolean): Promise<void> {
+    await chrome.storage.local.set({ hide_user_info: hide });
+  }
+
+  async getHideGeneratedAddresses(): Promise<boolean> {
+    const result = await chrome.storage.local.get('hide_generated_addresses');
+    return result.hide_generated_addresses || false;
+  }
+
+  async setHideGeneratedAddresses(hide: boolean): Promise<void> {
+    await chrome.storage.local.set({ hide_generated_addresses: hide });
+  }
 }

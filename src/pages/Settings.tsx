@@ -415,7 +415,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
         ))}
       </Section>
       <VersionInfo>
-        Qwacky v1.2.0
+        Qwacky v1.2.1
       </VersionInfo>
       <NotificationRenderer />
     </Container>
