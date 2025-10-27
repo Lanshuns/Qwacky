@@ -28,6 +28,7 @@ That's why I created Qwacky - initially for personal use, but I realized others 
 - Multiple accounts support
 - Notes for each generated address
 - Export/import settings (CSV & JSON)
+- And more!
 
 ### Browser Compatibility
 
