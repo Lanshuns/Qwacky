@@ -3,12 +3,19 @@
 ## 1.2.1
 
 ### Added
-- Generate address using keyboard shortcut
+- Cross-device sync (Experimental)
+- Generate address using keyboard shortcut (Alt+Shift+Q)
 - Sign up page
-- Search address and notes
-- Filter address
-- Set Nickname to accounts
-- UI improvements
+- Search & filter addresses and notes
+- Account nickname customization
+
+### Improved
+- UI enhancements and redesigned settings page
+- Performance optimizations with session storage caching (20x faster reads)
+- Gzip compression for 3-5x storage capacity
+- Timestamp-based conflict resolution for sync
+- Enter key for saving notes
+- Auto-focus on note editing
 
 ## 1.2.0
 
