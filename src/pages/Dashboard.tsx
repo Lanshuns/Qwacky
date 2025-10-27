@@ -38,6 +38,7 @@ export const Dashboard = () => {
   const [addresses, setAddresses] = useState<StoredAddress[]>([]);
   const [addressesCount, setAddressesCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [autoEditAddress, setAutoEditAddress] = useState<string | null>(null);
   const duckService = new DuckService();
   const { showNotification, NotificationRenderer } = useNotification();
 
@@ -99,6 +100,8 @@ export const Dashboard = () => {
         
         copyToClipboard(response.address + "@duck.com");
         showNotification("New address generated and copied to clipboard!");
+        
+        setAutoEditAddress(response.address);
       } else {
         showNotification("Failed to generate address: " + (response.message || "Unknown error"));
       }
@@ -182,6 +185,8 @@ export const Dashboard = () => {
         onUpdateNotes={handleUpdateNotes}
         onDeleteAddress={handleDeleteAddress}
         onClearAllAddresses={handleClearAllAddresses}
+        autoEditAddress={autoEditAddress}
+        onAutoEditComplete={() => setAutoEditAddress(null)}
       />
       <NotificationRenderer />
     </Container>

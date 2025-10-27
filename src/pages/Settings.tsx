@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import styled from "styled-components";
-import { MdFileUpload, MdArrowBack, MdDescription, MdSecurity, MdDownload, MdContentPaste } from "react-icons/md";
+import { MdFileUpload, MdArrowBack, MdDescription, MdSecurity, MdDownload, MdContentPaste, MdSync, MdRefresh, MdWarning } from "react-icons/md";
 import { DuckService } from "../services/DuckService";
+import { SyncService } from "../services/SyncService";
 import { usePermissions, PERMISSIONS, ALL_PERMISSIONS } from "../context/PermissionContext";
 import { PermissionToggle } from "../components/PermissionToggle";
 import { useNotification } from "../components/Notification";
@@ -29,6 +30,170 @@ const SectionHeader = styled.div`
     font-size: 18px;
     margin: 0;
     color: ${props => props.theme.text};
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+`;
+
+const ExperimentalBadge = styled.span`
+  background-color: #ff9f1920;
+  color: #ff9f19;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 8px;
+`;
+
+const WarningIcon = styled.div`
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  cursor: help;
+  
+  svg {
+    color: #ff9f19;
+  }
+`;
+
+const WarningTooltip = styled.div`
+  position: absolute;
+  width: 200px;
+  background: ${props => props.theme.surface};
+  color: ${props => props.theme.text};
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  border: 1px solid ${props => props.theme.border};
+  z-index: 100;
+  line-height: 1.4;
+  left: 24px;
+  top: -5px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  
+  ${WarningIcon}:hover & {
+    opacity: 1;
+    visibility: visible;
+  }
+`;
+
+const SyncToggleSwitch = styled.label`
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+`;
+
+const SyncToggleInput = styled.input`
+  opacity: 0;
+  width: 0;
+  height: 0;
+
+  &:checked + span {
+    background-color: ${props => props.theme.primary};
+  }
+
+  &:checked + span:before {
+    transform: translateX(24px);
+  }
+
+  &:disabled + span {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const SyncToggleSlider = styled.span`
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: ${props => props.theme.border};
+  transition: background-color 0.4s ease;
+  border-radius: 24px;
+
+  &:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: transform 0.4s ease;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+`;
+
+const SyncStatsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background-color: ${props => props.theme.surface};
+  border: 1px solid ${props => props.theme.border};
+  border-radius: 8px;
+`;
+
+const SyncStatRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: ${props => props.theme.textSecondary};
+  
+  strong {
+    color: ${props => props.theme.text};
+    margin-right: 8px;
+  }
+`;
+
+const SyncStatValue = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const RefreshIconButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background-color: transparent;
+  border: none;
+  border-radius: 4px;
+  color: ${props => props.theme.textSecondary};
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: ${props => props.theme.primary}20;
+    color: ${props => props.theme.primary};
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  svg {
+    transition: transform 0.5s ease;
+  }
+
+  &:active:not(:disabled) svg {
+    transform: rotate(360deg);
   }
 `;
 
@@ -106,8 +271,16 @@ export const Settings = ({ onBack }: SettingsProps) => {
   const [permissionState, setPermissionState] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const duckService = new DuckService();
+  const syncService = new SyncService();
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const { showNotification, NotificationRenderer } = useNotification();
+  const [syncEnabled, setSyncEnabled] = useState(false);
+  const [syncStats, setSyncStats] = useState<{
+    lastSync: number | null;
+    bytesInUse: number;
+    quotaBytes: number;
+    percentUsed: number;
+  } | null>(null);
 
   useEffect(() => {
     const loadPermissionStates = async () => {
@@ -133,6 +306,77 @@ export const Settings = ({ onBack }: SettingsProps) => {
     const timerId = setTimeout(loadPermissionStates, 1500);
     return () => clearTimeout(timerId);
   }, [hasPermissions]);
+
+  useEffect(() => {
+    const loadSyncState = async () => {
+      const enabled = await syncService.isSyncEnabled();
+      setSyncEnabled(enabled);
+      
+      if (enabled) {
+        const stats = await syncService.getSyncStats();
+        setSyncStats(stats);
+      }
+    };
+    
+    loadSyncState();
+  }, []);
+
+  const handleSyncToggle = async (enabled: boolean) => {
+    try {
+      setLoading(prev => ({ ...prev, sync: true }));
+      
+      if (enabled) {
+        await syncService.setSyncEnabled(true);
+        const result = await syncService.migrateToSync();
+        
+        if (result.success) {
+          setSyncEnabled(true);
+          showNotification(result.message);
+          
+          const stats = await syncService.getSyncStats();
+          setSyncStats(stats);
+        } else {
+          await syncService.setSyncEnabled(false);
+          showNotification(`Sync failed: ${result.message}`);
+        }
+      } else {
+        await syncService.setSyncEnabled(false);
+        setSyncEnabled(false);
+        setSyncStats(null);
+        showNotification('Sync disabled');
+      }
+    } catch (error: any) {
+      showNotification(`Sync error: ${error.message || 'Unknown error'}`);
+      await syncService.setSyncEnabled(false);
+      setSyncEnabled(false);
+    } finally {
+      setLoading(prev => ({ ...prev, sync: false }));
+    }
+  };
+
+  const handleRefreshSync = async () => {
+    try {
+      setLoading(prev => ({ ...prev, refreshSync: true }));
+      
+      const result = await syncService.pullFromSync();
+      
+      if (result.success) {
+        showNotification(result.message);
+        
+        const stats = await syncService.getSyncStats();
+        setSyncStats(stats);
+        
+        window.dispatchEvent(new Event('addressesUpdated'));
+      } else {
+        showNotification(`Sync refresh failed: ${result.message}`);
+      }
+    } catch (error: any) {
+      showNotification(`Sync refresh error: ${error.message || 'Unknown error'}`);
+    } finally {
+      setLoading(prev => ({ ...prev, refreshSync: false }));
+    }
+  };
+
 
   useEffect(() => {
     const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
@@ -285,12 +529,10 @@ export const Settings = ({ onBack }: SettingsProps) => {
   const handlePaste = async (e: ClipboardEvent) => {
     e.preventDefault();
     
-    // Try to get file from clipboard
     const items = Array.from(e.clipboardData?.items || []);
     let text = '';
 
     for (const item of items) {
-      // Check for file items
       if (item.kind === 'file') {
         const file = item.getAsFile();
         if (file?.name.match(/\.(json|csv)$/i)) {
@@ -349,6 +591,71 @@ export const Settings = ({ onBack }: SettingsProps) => {
       )}
       <Section>
         <SectionHeader>
+          <h2><MdSecurity size={20} style={{ marginRight: '8px', color: '#ff9f19' }} />Permissions</h2>
+        </SectionHeader>
+        {ALL_PERMISSIONS.map(permission => (
+          <PermissionToggle
+            key={permission}
+            name={PERMISSIONS[permission].name}
+            description={PERMISSIONS[permission].description}
+            isEnabled={permission === 'storage' || permission === 'contextMenu' ? true : permissionState[permission] || false}
+            onChange={(enabled) => togglePermission(permission, enabled)}
+            disabled={false}
+          />
+        ))}
+      </Section>
+      
+      <Section>
+        <SectionHeader>
+          <h2>
+            <MdSync size={20} style={{ marginRight: '8px', color: '#ff9f19' }} />
+            Sync
+            <WarningIcon>
+              <MdWarning size={16} />
+              <WarningTooltip>
+                This is currently an experimental feature. Make sure to backup your current addresses in case of data loss!
+              </WarningTooltip>
+            </WarningIcon>
+            <ExperimentalBadge>EXPERIMENTAL</ExperimentalBadge>
+          </h2>
+          <SyncToggleSwitch>
+            <SyncToggleInput
+              type="checkbox"
+              checked={syncEnabled}
+              onChange={(e) => handleSyncToggle(e.target.checked)}
+              disabled={loading.sync}
+            />
+            <SyncToggleSlider />
+          </SyncToggleSwitch>
+        </SectionHeader>
+        
+        {syncEnabled && syncStats && (
+          <SyncStatsContainer>
+            <SyncStatRow>
+              <div>
+                <strong>Status:</strong> {syncStats.lastSync ? `Last synced ${new Date(syncStats.lastSync).toLocaleString()}` : 'Never synced'}
+              </div>
+              <SyncStatValue>
+                <RefreshIconButton
+                  onClick={handleRefreshSync}
+                  disabled={loading.refreshSync}
+                  title="Refresh from cloud"
+                >
+                  <MdRefresh size={16} />
+                </RefreshIconButton>
+              </SyncStatValue>
+            </SyncStatRow>
+            <SyncStatRow>
+              <div>
+                <strong>Storage used:</strong> {(syncStats.bytesInUse / 1024).toFixed(2)} KB / {(syncStats.quotaBytes / 1024).toFixed(0)} KB ({syncStats.percentUsed.toFixed(1)}%)
+              </div>
+            </SyncStatRow>
+          </SyncStatsContainer>
+        )}
+      </Section>
+      
+      <Section>
+        <SectionHeader>
           <h2><MdDescription size={20} style={{ marginRight: '8px', color: '#ff9f19' }} />Backup & Restore</h2>
         </SectionHeader>
         
@@ -398,21 +705,6 @@ export const Settings = ({ onBack }: SettingsProps) => {
           accept=".json,.csv" 
           onChange={handleImportAddresses} 
         />
-      </Section>
-      <Section>
-        <SectionHeader>
-          <h2><MdSecurity size={20} style={{ marginRight: '8px', color: '#ff9f19' }} />Permissions</h2>
-        </SectionHeader>
-        {ALL_PERMISSIONS.map(permission => (
-          <PermissionToggle
-            key={permission}
-            name={PERMISSIONS[permission].name}
-            description={PERMISSIONS[permission].description}
-            isEnabled={permission === 'storage' || permission === 'contextMenu' ? true : permissionState[permission] || false}
-            onChange={(enabled) => togglePermission(permission, enabled)}
-            disabled={false}
-          />
-        ))}
       </Section>
       <VersionInfo>
         Qwacky v1.2.1

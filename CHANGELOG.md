@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.1
+
+### Added
+- Generate address using keyboard shortcut
+- Sign up page
+- Search address and notes
+- Filter address
+- Set Nickname to accounts
+- UI improvements
+
 ## 1.2.0
 
 ### Added

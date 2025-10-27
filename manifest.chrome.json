@@ -30,5 +30,13 @@
   },
   "host_permissions": [
     "https://quack.duckduckgo.com/*"
-  ]
+  ],
+  "commands": {
+    "generate-duck-address": {
+      "suggested_key": {
+        "default": "Alt+Shift+Q"
+      },
+      "description": "Generate and fill duck address"
+    }
+  }
 }

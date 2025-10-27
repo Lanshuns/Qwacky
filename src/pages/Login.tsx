@@ -89,10 +89,31 @@ const BackButton = styled.button`
 `;
 
 const VersionInfo = styled.div`
-  margin-top: 32px;
+  margin-top: 110px;
   text-align: center;
   font-size: 14px;
   color: ${props => props.theme.textSecondary};
+`;
+
+const SignupSection = styled.div`
+  margin-top: 16px;
+  text-align: center;
+  font-size: 14px;
+  color: ${props => props.theme.textSecondary};
+`;
+
+const SignupLink = styled.button`
+  background: none;
+  border: none;
+  color: ${props => props.theme.primary};
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 14px;
+  padding: 0;
+  
+  &:hover {
+    opacity: 0.8;
+  }
 `;
 
 interface LoginProps {
@@ -105,6 +126,7 @@ export const Login = ({ onSubmit, isAddingAccount, onBack }: LoginProps) => {
   const [username, setUsername] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showSignupWindow, setShowSignupWindow] = useState(false)
   const duckService = new DuckService()
   const { accounts } = useApp()
 
@@ -122,6 +144,30 @@ export const Login = ({ onSubmit, isAddingAccount, onBack }: LoginProps) => {
     const pastedText = e.clipboardData.getData('text');
     const sanitized = sanitizeUsername(pastedText);
     setUsername(sanitized);
+  }
+
+  const handleCreateAccount = () => {
+    const width = 480;
+    const height = 720;
+    const left = (screen.width - width) / 2;
+    const top = (screen.height - height) / 2;
+    
+    const signupWindow = window.open(
+      'https://duckduckgo.com/email/start',
+      'duckSignup',
+      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+    );
+
+    if (signupWindow) {
+      setShowSignupWindow(true);
+  
+      const checkClosed = setInterval(() => {
+        if (signupWindow.closed) {
+          setShowSignupWindow(false);
+          clearInterval(checkClosed);
+        }
+      }, 1000);
+    }
   }
 
   const handleSubmit = async () => {
@@ -179,6 +225,16 @@ export const Login = ({ onSubmit, isAddingAccount, onBack }: LoginProps) => {
         {loading ? 'Sending...' : 'Continue'}
       </Button>
       {error && <ErrorMessage>{error}</ErrorMessage>}
+      
+      <SignupSection>
+        Don't have one? <SignupLink onClick={handleCreateAccount}>Create now</SignupLink>
+        {showSignupWindow && (
+          <div style={{ marginTop: '8px', fontSize: '12px', fontStyle: 'italic' }}>
+            Signup window opened. Complete registration and return here to login.
+          </div>
+        )}
+      </SignupSection>
+      
       <VersionInfo>
         Qwacky v1.2.1
       </VersionInfo>

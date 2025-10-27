@@ -81,7 +81,7 @@ export class DuckService {
 
         const latestUserData = await this.storage.getUserData()
         if (latestUserData) {
-          await this.storage.updateAddressCount(latestUserData.stats.addresses_generated + 1)
+          await this.storage.updateAddressCount(1)
         }
       }
       return response

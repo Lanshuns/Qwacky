@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import styled from 'styled-components'
-import { MdLightMode, MdDarkMode, MdLogout, MdSettings, MdDevices, MdMenu, MdAccountCircle, MdPersonAdd, MdUpdate, MdSwapHoriz, MdKeyboardArrowDown } from 'react-icons/md'
+import { MdLightMode, MdDarkMode, MdLogout, MdSettings, MdDevices, MdMenu, MdAccountCircle, MdPersonAdd, MdUpdate, MdSwapHoriz, MdKeyboardArrowDown, MdEdit, MdCheck, MdClose } from 'react-icons/md'
 import { FaGithub } from 'react-icons/fa'
 import { useApp, ThemeMode } from '../context/AppContext'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -139,6 +139,125 @@ const AccountItem = styled(DropdownItem)`
   }
 `
 
+const CurrentAccountItem = styled.div`
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: ${props => props.theme.primary};
+  
+  svg {
+    color: ${props => props.theme.primary};
+  }
+  
+  .username {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .edit-icon {
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    
+    &:hover {
+      background-color: ${props => props.theme.hover};
+    }
+  }
+`
+
+const NicknameEditDialog = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`
+
+const NicknameDialogContent = styled.div`
+  background: ${props => props.theme.surface};
+  border-radius: 8px;
+  padding: 24px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+`
+
+const NicknameDialogTitle = styled.h3`
+  margin: 0 0 8px 0;
+  color: ${props => props.theme.text};
+  font-size: 18px;
+`
+
+const NicknameDialogSubtitle = styled.div`
+  color: ${props => props.theme.textSecondary};
+  font-size: 13px;
+  margin-bottom: 16px;
+`
+
+const NicknameInput = styled.input`
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid ${props => props.theme.border};
+  border-radius: 8px;
+  background: ${props => props.theme.background};
+  color: ${props => props.theme.text};
+  font-size: 14px;
+  margin-bottom: 16px;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: ${props => props.theme.primary};
+  }
+
+  &::placeholder {
+    color: ${props => props.theme.textTertiary};
+  }
+`
+
+const NicknameDialogActions = styled.div`
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+`
+
+const NicknameButton = styled.button<{ primary?: boolean }>`
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  
+  ${props => props.primary ? `
+    background: ${props.theme.primary};
+    color: white;
+    
+    &:hover {
+      opacity: 0.9;
+    }
+  ` : `
+    background: ${props.theme.surface};
+    color: ${props.theme.text};
+    border: 1px solid ${props.theme.border};
+    
+    &:hover {
+      background: ${props.theme.hover};
+    }
+  `}
+`
+
 interface HeaderProps {
   onSettingsClick?: () => void;
   onAddAccountClick?: () => void;
@@ -151,6 +270,9 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick }:
   const [menuDropdownOpen, setMenuDropdownOpen] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [accountsListOpen, setAccountsListOpen] = useState(false)
+  const [showNicknameDialog, setShowNicknameDialog] = useState(false)
+  const [nickname, setNickname] = useState('')
+  const [accountNicknames, setAccountNicknames] = useState<Record<string, string>>({})
   const themeDropdownRef = useRef<HTMLDivElement>(null)
   const menuDropdownRef = useRef<HTMLDivElement>(null)
   
@@ -178,7 +300,50 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick }:
       setMenuDropdownOpen(false)
     }
   }
+
+  const handleEditNickname = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (currentAccount) {
+      setNickname(accountNicknames[currentAccount] || '')
+      setShowNicknameDialog(true)
+      setMenuDropdownOpen(false)
+    }
+  }
+
+  const handleSaveNickname = async () => {
+    if (currentAccount) {
+      const updatedNicknames = { ...accountNicknames, [currentAccount]: nickname.trim() }
+      setAccountNicknames(updatedNicknames)
+      await chrome.storage.local.set({ accountNicknames: updatedNicknames })
+      setShowNicknameDialog(false)
+    }
+  }
+
+  const handleClearNickname = async () => {
+    if (currentAccount) {
+      const updatedNicknames = { ...accountNicknames }
+      delete updatedNicknames[currentAccount]
+      setAccountNicknames(updatedNicknames)
+      await chrome.storage.local.set({ accountNicknames: updatedNicknames })
+      setShowNicknameDialog(false)
+      setNickname('')
+    }
+  }
+
+  const getDisplayName = (username: string) => {
+    return accountNicknames[username] || username
+  }
   
+  useEffect(() => {
+    const loadNicknames = async () => {
+      const result = await chrome.storage.local.get('accountNicknames')
+      if (result.accountNicknames) {
+        setAccountNicknames(result.accountNicknames)
+      }
+    }
+    loadNicknames()
+  }, [])
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (themeDropdownRef.current && !themeDropdownRef.current.contains(event.target as Node)) {
@@ -235,10 +400,15 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick }:
                 <MdMenu size={24} />
               </IconButton>
               <DropdownContent isOpen={menuDropdownOpen}>
-                <DropdownItem current={true}>
+                <CurrentAccountItem>
                   <MdAccountCircle size={20} />
-                  <span className="username">{currentAccount}</span>
-                </DropdownItem>
+                  <span className="username">{currentAccount ? getDisplayName(currentAccount) : ''}</span>
+                  <MdEdit 
+                    size={18} 
+                    className="edit-icon"
+                    onClick={handleEditNickname}
+                  />
+                </CurrentAccountItem>
                 
                 <DropdownDivider />
                 {accounts.length > 1 && (
@@ -264,7 +434,7 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick }:
                             onClick={() => handleSwitchAccount(account.username)}
                           >
                             <MdAccountCircle size={16} />
-                            <span className="username">{account.username}</span>
+                            <span className="username">{getDisplayName(account.username)}</span>
                           </AccountItem>
                         ))
                       }
@@ -307,6 +477,43 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick }:
         onConfirm={handleLogoutConfirm}
         onCancel={() => setShowLogoutConfirm(false)}
       />
+
+      {showNicknameDialog && (
+        <NicknameEditDialog onClick={() => setShowNicknameDialog(false)}>
+          <NicknameDialogContent onClick={(e) => e.stopPropagation()}>
+            <NicknameDialogTitle>Edit Account Nickname</NicknameDialogTitle>
+            <NicknameDialogSubtitle>
+              Set a custom nickname for <strong>{currentAccount}</strong>
+            </NicknameDialogSubtitle>
+            <NicknameInput
+              type="text"
+              placeholder="Enter nickname (optional)"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveNickname()
+                if (e.key === 'Escape') setShowNicknameDialog(false)
+              }}
+              autoFocus
+            />
+            <NicknameDialogActions>
+              {accountNicknames[currentAccount!] && (
+                <NicknameButton onClick={handleClearNickname}>
+                  <MdClose size={18} />
+                  Clear
+                </NicknameButton>
+              )}
+              <NicknameButton onClick={() => setShowNicknameDialog(false)}>
+                Cancel
+              </NicknameButton>
+              <NicknameButton primary onClick={handleSaveNickname}>
+                <MdCheck size={18} />
+                Save
+              </NicknameButton>
+            </NicknameDialogActions>
+          </NicknameDialogContent>
+        </NicknameEditDialog>
+      )}
     </>
   )
 }

@@ -14,8 +14,10 @@ declare let browser: FirefoxBrowserType;
 const api: FirefoxBrowserType = typeof browser !== 'undefined' ? browser : chrome as FirefoxBrowserType;
 
 import { DuckService } from './services/DuckService'
+import { SyncService } from './services/SyncService'
 
 const duckService = new DuckService()
+const syncService = new SyncService()
 
 const FEATURE_STATE_KEY = 'contextMenuEnabled'
 const CONTEXT_MENU_ID = 'generate-duck-address'
@@ -95,7 +97,6 @@ const ContextMenu = {
             return;
           }
           if (error) {
-            // console.error('Menu creation error:', error.message);
             resolve(false);
             return;
           }
@@ -104,7 +105,6 @@ const ContextMenu = {
         });
       });
     } catch (error) {
-      // console.error('Menu creation error:', error);
       return false;
     }
   },
@@ -124,7 +124,6 @@ const Feature = {
   async enable(): Promise<boolean> {
     try {
       const hasPermissions = await Permissions.check()
-      // console.debug('Has required permissions:', hasPermissions)
       
       if (!hasPermissions) {
         console.error('Missing required permissions')
@@ -163,9 +162,7 @@ const Feature = {
   }
 }
 
-const initialize = async () => {
-  // console.info('Extension installed/updated, initializing...')
-  
+const initialize = async () => {  
   try {
     const [hasState, hasPermissions] = await Promise.all([
       api.storage.local.get(FEATURE_STATE_KEY),
@@ -177,9 +174,6 @@ const initialize = async () => {
     }
 
     const shouldBeEnabled = hasState[FEATURE_STATE_KEY] && hasPermissions
-    // console.debug('Feature state:', Boolean(hasState[FEATURE_STATE_KEY]))
-    // console.debug('Has permissions:', hasPermissions)
-    
     if (shouldBeEnabled) {
       await ContextMenu.create()
     } else {
@@ -195,7 +189,6 @@ const initialize = async () => {
 }
 
 api.runtime.onInstalled.addListener(() => {
-  // console.info('Extension installed/updated')
   setTimeout(initialize, 1000)
 })
 
@@ -285,3 +278,63 @@ if (api.contextMenus) {
     }
   })
 }
+
+if (api.commands) {
+  api.commands.onCommand.addListener(async (command) => {
+    console.log('Command received:', command)
+    if (command !== 'generate-duck-address') return
+
+    try {
+      console.log('Processing generate-duck-address command')
+      const [activeTab] = await api.tabs.query({ active: true, currentWindow: true })
+      console.log('Active tab:', activeTab)
+      if (!activeTab?.id || activeTab.id < 0) return
+
+      let domain = ''
+      if (activeTab.url) {
+        try {
+          domain = new URL(activeTab.url).hostname
+        } catch {}
+      }
+      console.log('Domain:', domain)
+
+      const response = await duckService.generateAddress(domain || undefined)
+      console.log('Generate response:', response)
+      if (response.status === 'error') {
+        await api.tabs.sendMessage(activeTab.id, {
+          type: 'show-notification',
+          message: response.message || 'Failed to generate address. Login required?'
+        })
+        return
+      }
+
+      await api.scripting.executeScript({
+        target: { tabId: activeTab.id },
+        files: ['contentScript.js']
+      })
+
+      await api.tabs.sendMessage(activeTab.id, {
+        type: 'fill-address',
+        address: response.address
+      })
+    } catch (error) {
+      console.error('Error in command handler:', error)
+    }
+  })
+} else {
+  console.log('Commands API not available')
+}
+
+api.storage.onChanged.addListener(async (changes, namespace) => {
+  if (namespace === 'sync') {
+    for (const key in changes) {
+      if (key.startsWith('addresses_')) {
+        try {
+          await syncService.handleSyncChange(key, changes[key].newValue || []);
+        } catch (error) {
+          console.error('Error handling sync change:', error);
+        }
+      }
+    }
+  }
+});

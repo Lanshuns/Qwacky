@@ -240,15 +240,12 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const tooltipTimeoutRef = useRef<number | null>(null);
 
-  // Determine which permission this toggle is for
   const permissionType = Object.entries(PERMISSIONS).find(
     ([_, permission]) => permission.name === name
   )?.[0] as keyof typeof PERMISSIONS | undefined;
 
-  // Check if this permission is required
   const isRequired = permissionType ? PERMISSIONS[permissionType]?.isRequired : false;
 
-  // Get browser-specific info if available
   const browserSpecificInfo = permissionType && PERMISSIONS[permissionType]?.browserSpecificInfo 
     ? isFirefox
       ? PERMISSIONS[permissionType].browserSpecificInfo?.firefox

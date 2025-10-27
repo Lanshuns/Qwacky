@@ -95,6 +95,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadAccounts()
   }, [])
 
+  useEffect(() => {
+    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
+      if (areaName === 'local' && changes.user_data) {
+        const newUserData = changes.user_data.newValue;
+        if (newUserData && currentAccount === newUserData.user?.username) {
+          setUserData(newUserData);
+        }
+      }
+      
+      if (areaName === 'local' && changes.accounts) {
+        const newAccounts = changes.accounts.newValue;
+        if (newAccounts) {
+          setAccounts(newAccounts);
+          if (currentAccount) {
+            const account = newAccounts.find((acc: Account) => acc.username === currentAccount);
+            if (account) {
+              setUserData(account.userData);
+            }
+          }
+        }
+      }
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChange);
+    
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+    };
+  }, [currentAccount]);
+
   const toggleDarkMode = () => {
     if (themeMode === 'system') {
       setThemeMode(systemIsDark ? 'light' : 'dark')
