@@ -7,6 +7,9 @@
     "gecko": {
       "id": "qwacky@local-v1.0.1",
       "strict_min_version": "112.0"
+    },
+    "gecko_android": {
+      "strict_min_version": "112.0"
     }
   },
   "icons": {
@@ -40,6 +43,14 @@
   "host_permissions": [
     "https://quack.duckduckgo.com/*"
   ],
+  "content_scripts": [
+   {
+     "matches": ["https://duckduckgo.com/email/*"],
+     "js": ["bypassExtensionRequirement.js"],
+     "world": "MAIN",
+     "run_at": "document_start"
+   }
+ ],
   "commands": {
     "generate-duck-address": {
       "suggested_key": {

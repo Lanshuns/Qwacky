@@ -31,6 +31,14 @@
   "host_permissions": [
     "https://quack.duckduckgo.com/*"
   ],
+  "content_scripts": [
+   {
+     "matches": ["https://duckduckgo.com/email/*"],
+     "js": ["bypassExtensionRequirement.js"],
+     "world": "MAIN",
+     "run_at": "document_start"
+   }
+ ],
   "commands": {
     "generate-duck-address": {
       "suggested_key": {

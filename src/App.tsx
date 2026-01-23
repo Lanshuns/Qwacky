@@ -1,5 +1,5 @@
 import { useApp } from './context/AppContext'
-import styled, { ThemeProvider } from 'styled-components'
+import styled, { createGlobalStyle, ThemeProvider } from 'styled-components'
 import { Login } from './pages/Login'
 import { OTP } from './pages/OTP'
 import { Dashboard } from './pages/Dashboard'
@@ -11,12 +11,45 @@ import { useState, useEffect } from 'react'
 
 const APP_VERSION = '1.2.1'
 
+const GlobalStyle = createGlobalStyle`
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+      Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background: ${props => props.theme.background};
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: ${props => props.theme.surface};
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: ${props => props.theme.border};
+    border-radius: 4px;
+    
+    &:hover {
+      background: ${props => `${props.theme.primary}80`};
+    }
+  }
+`
+
 const Container = styled.div`
   width: 360px;
   min-height: 480px;
-  background: ${props => props.theme.background};
   color: ${props => props.theme.text};
   position: relative;
+  margin: auto; /* Centers it when opened in fullscreen in Firefox for Android */
 `
 
 export const App = () => {
@@ -181,6 +214,7 @@ export const App = () => {
 
   return (
     <ThemeProvider theme={darkMode ? theme.dark : theme.light}>
+      <GlobalStyle />
       <Container>
         <Header 
           onSettingsClick={toggleSettings} 
