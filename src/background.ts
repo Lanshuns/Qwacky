@@ -209,6 +209,29 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true
   }
   
+  if (message.action === 'openDdgEmail') {
+    api.windows.create({
+      url: 'https://duckduckgo.com/email/settings/account',
+      type: 'popup',
+      width: 900,
+      height: 700
+    }, (win) => {
+      const tabId = win?.tabs?.[0]?.id;
+      if (!tabId) return;
+
+      const listener = (tid: number, changeInfo: chrome.tabs.TabChangeInfo) => {
+        if (tid === tabId && changeInfo.status === 'complete') {
+          api.tabs.onUpdated.removeListener(listener);
+          setTimeout(() => {
+            api.tabs.sendMessage(tabId, { action: 'ddg-auth' });
+          }, 500);
+        }
+      };
+      api.tabs.onUpdated.addListener(listener);
+    });
+    return false;
+  }
+
   if (message.action === 'reload-extension') {
     try {
       setTimeout(() => api.runtime.reload(), 500)

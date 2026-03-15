@@ -3,7 +3,7 @@ import { useApp } from "../context/AppContext";
 import { DuckService } from "../services/DuckService";
 import { ReverseAlias } from "../types";
 import { useNotification } from "../components/Notification";
-import { UserInfoSection } from "../components/UserInfoSection";
+
 import { ItemListSection, ListItem, ListConfig } from "../components/AddressListSection";
 import { DashboardTabs } from "../components/DashboardTabs";
 import {
@@ -52,7 +52,6 @@ const SEND_LIST_CONFIG: ListConfig = {
 export const Dashboard = () => {
   const { userData, currentAccount } = useApp();
   const [addresses, setAddresses] = useState<StoredAddress[]>([]);
-  const [addressesCount, setAddressesCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [autoEditAddress, setAutoEditAddress] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'generate' | 'send'>('generate');
@@ -76,8 +75,6 @@ export const Dashboard = () => {
 
   useEffect(() => {
     if (userData) {
-      setAddressesCount(userData.stats.addresses_generated);
-
       const loadData = async () => {
         try {
           const [loadedAddresses, loadedAliases] = await Promise.all([
@@ -130,13 +127,6 @@ export const Dashboard = () => {
           notes: ''
         };
         setAddresses([newAddress, ...addresses]);
-        setAddressesCount((prev) => prev + 1);
-
-        const refreshedUserData = await duckService.getUserData();
-        if (refreshedUserData && refreshedUserData.stats) {
-          setAddressesCount(refreshedUserData.stats.addresses_generated);
-        }
-
         copyToClipboard(response.address + "@duck.com");
         setAutoEditAddress(response.address);
       }
@@ -167,7 +157,6 @@ export const Dashboard = () => {
     const success = await duckService.clearAllAddresses();
     if (success) {
       setAddresses([]);
-      setAddressesCount(0);
     }
   };
 
@@ -250,11 +239,6 @@ export const Dashboard = () => {
 
   return (
     <DashboardContainer>
-      <UserInfoSection
-        userData={userData}
-        addressesCount={addressesCount}
-        copyToClipboard={copyToClipboard}
-      />
       <DashboardTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
       {activeTab === 'generate' && (

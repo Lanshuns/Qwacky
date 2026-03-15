@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard'
 import { Settings } from './pages/Settings'
 import { Changelog } from './pages/Changelog'
 import { About } from './pages/About'
+import { MyAccount } from './pages/MyAccount'
 import { Header } from './components/Header'
 import { theme } from './theme'
 import { useState, useEffect } from 'react'
@@ -79,6 +80,7 @@ export const App = () => {
   const [showSettings, setShowSettings] = useState(false)
   const [showChangelog, setShowChangelog] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
+  const [showMyAccount, setShowMyAccount] = useState(false)
   const [addingAccount, setAddingAccount] = useState(false)
 
   useEffect(() => {
@@ -114,6 +116,8 @@ export const App = () => {
       setTempUsername('')
       setShowSettings(false)
       setShowChangelog(false)
+      setShowAbout(false)
+      setShowMyAccount(false)
       setAddingAccount(false)
       chrome.storage.local.remove([
         'loginState',
@@ -149,15 +153,17 @@ export const App = () => {
     if (newShowSettings) {
       setShowChangelog(false)
       setShowAbout(false)
+      setShowMyAccount(false)
     }
   }
-  
+
   const toggleChangelog = () => {
     const newShowChangelog = !showChangelog
     setShowChangelog(newShowChangelog)
     if (newShowChangelog) {
       setShowSettings(false)
       setShowAbout(false)
+      setShowMyAccount(false)
       chrome.storage.local.set({ showSettings: false })
     }
   }
@@ -168,6 +174,18 @@ export const App = () => {
     if (newShowAbout) {
       setShowSettings(false)
       setShowChangelog(false)
+      setShowMyAccount(false)
+      chrome.storage.local.set({ showSettings: false })
+    }
+  }
+
+  const toggleMyAccount = () => {
+    const newShowMyAccount = !showMyAccount
+    setShowMyAccount(newShowMyAccount)
+    if (newShowMyAccount) {
+      setShowSettings(false)
+      setShowChangelog(false)
+      setShowAbout(false)
       chrome.storage.local.set({ showSettings: false })
     }
   }
@@ -177,6 +195,7 @@ export const App = () => {
     setCurrentPage('login')
     setShowSettings(false)
     setShowChangelog(false)
+    setShowMyAccount(false)
     chrome.storage.local.set({ showSettings: false, addingAccount: true, loginState: 'login' })
   }
   
@@ -196,6 +215,7 @@ export const App = () => {
   const renderCurrentPage = () => {
     if (showSettings) return <Settings onBack={toggleSettings} />
     if (showAbout) return <About onBack={toggleAbout} />
+    if (showMyAccount) return <MyAccount onBack={toggleMyAccount} />
 
     if (!userData || addingAccount) {
       if (currentPage === 'login') {
@@ -259,6 +279,7 @@ export const App = () => {
           onAddAccountClick={handleAddAccount}
           onChangelogClick={toggleChangelog}
           onAboutClick={toggleAbout}
+          onMyAccountClick={toggleMyAccount}
         />
         {renderCurrentPage()}
       </Container>

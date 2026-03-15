@@ -52,12 +52,13 @@ export default defineConfig(({ mode }) => {
           popup: resolve(__dirname, 'index.html'),
           background: resolve(__dirname, 'src/background.ts'),
           contentScript: resolve(__dirname, 'src/contentScript.ts'),
-          bypassExtensionRequirement: resolve(__dirname, 'src/bypassExtensionRequirement.ts')
+          bypassExtensionRequirement: resolve(__dirname, 'src/bypassExtensionRequirement.ts'),
+          ddgEmailAuth: resolve(__dirname, 'src/ddgEmailAuth.ts')
         },
         output: {
           format: 'esm',
           entryFileNames: chunk => {
-            if (chunk.name === 'background' || chunk.name === 'contentScript' || chunk.name === 'bypassExtensionRequirement') {
+            if (chunk.name === 'background' || chunk.name === 'contentScript' || chunk.name === 'bypassExtensionRequirement' || chunk.name === 'ddgEmailAuth') {
               return '[name].js'
             }
             return 'assets/[name].[hash].js'

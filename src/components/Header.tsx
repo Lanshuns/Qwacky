@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { MdLightMode, MdDarkMode, MdLogout, MdSettings, MdDevices, MdMenu, MdAccountCircle, MdPersonAdd, MdNewReleases, MdSwapHoriz, MdKeyboardArrowDown, MdEdit, MdCheck, MdClose, MdFavorite, MdInfoOutline } from 'react-icons/md'
+import { MdLightMode, MdDarkMode, MdLogout, MdSettings, MdDevices, MdMenu, MdAccountCircle, MdPersonAdd, MdNewReleases, MdSwapHoriz, MdKeyboardArrowDown, MdEdit, MdCheck, MdClose, MdFavorite, MdInfoOutline, MdManageAccounts } from 'react-icons/md'
 import { useApp, ThemeMode } from '../context/AppContext'
 import { ConfirmDialog } from './ConfirmDialog'
 import {
@@ -32,9 +32,10 @@ interface HeaderProps {
   onAddAccountClick?: () => void;
   onChangelogClick?: () => void;
   onAboutClick?: () => void;
+  onMyAccountClick?: () => void;
 }
 
-export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, onAboutClick }: HeaderProps) => {
+export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, onAboutClick, onMyAccountClick }: HeaderProps) => {
   const { darkMode, themeMode, setThemeMode, userData, logout, accounts, currentAccount, switchAccount } = useApp()
   const [themeDropdownOpen, setThemeDropdownOpen] = useState(false)
   const [menuDropdownOpen, setMenuDropdownOpen] = useState(false)
@@ -215,6 +216,10 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
                   <DropdownItem onClick={() => handleMenuItemClick(onAddAccountClick)}>
                     <MdPersonAdd size={20} />
                     Add Account
+                  </DropdownItem>
+                  <DropdownItem onClick={() => handleMenuItemClick(onMyAccountClick)}>
+                    <MdManageAccounts size={20} />
+                    My Account
                   </DropdownItem>
                   <DropdownDivider />
                 </>

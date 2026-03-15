@@ -566,3 +566,38 @@ export const LinkItem = styled.a`
     color: ${props => props.theme.textTertiary};
   }
 `
+
+
+export const MyAccountContainer = styled.div`
+  padding: 16px 20px;
+`
+
+export const ManageAccountButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid ${props => props.theme.border};
+  border-radius: 8px;
+  background: ${props => props.theme.surface};
+  color: ${props => props.theme.text};
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: ${props => props.theme.primary};
+    background: ${props => props.theme.hover};
+  }
+
+  svg:first-child {
+    color: ${props => props.theme.primary};
+  }
+
+  svg:last-child {
+    margin-left: auto;
+    color: ${props => props.theme.textTertiary};
+  }
+`

@@ -49,6 +49,11 @@
      "js": ["bypassExtensionRequirement.js"],
      "world": "MAIN",
      "run_at": "document_start"
+   },
+   {
+     "matches": ["https://duckduckgo.com/email/*"],
+     "js": ["ddgEmailAuth.js"],
+     "run_at": "document_idle"
    }
  ],
   "commands": {
