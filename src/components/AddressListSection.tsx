@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { MdVisibility, MdVisibilityOff, MdEdit, MdCheck, MdClose, MdDelete, MdDeleteSweep, MdSearch, MdSort, MdClear } from "react-icons/md";
 import { ConfirmDialog } from './ConfirmDialog';
-import { StorageService } from '../services/StorageService';
 import { SectionHeader } from '../styles/SharedStyles';
 import {
   Section,
@@ -27,47 +26,65 @@ import {
   NotesEditContainer,
   NotesInput,
   NotesActions,
-  ButtonsContainer
+  ButtonsContainer,
+  ItemSubtext
 } from '../styles/AddressListSection.styles';
 
-const storageService = new StorageService();
-
-interface StoredAddress {
-  value: string;
+export interface ListItem {
+  key: string;
+  primaryText: string;
+  secondaryText?: string;
+  copyText: string;
+  copyLabel: string;
   timestamp: number;
   notes?: string;
 }
 
+export interface ListConfig {
+  title: string;
+  itemsLabel: string;
+  emptyTitle: string;
+  emptySubtitle: string;
+  searchPlaceholder: string;
+  deleteTitle: string;
+  getDeleteMessage: (key: string) => string;
+  clearTitle: string;
+  clearMessage: string;
+  hideStorageKey: string;
+}
+
+interface ItemListSectionProps {
+  items: ListItem[];
+  config: ListConfig;
+  copyToClipboard: (text: string, event?: MouseEvent) => void;
+  formatTime: (timestamp: number) => string;
+  onUpdateNotes: (key: string, notes: string) => Promise<void>;
+  onDeleteItem: (key: string) => Promise<void>;
+  onClearAll: () => Promise<void>;
+  autoEditKey?: string | null;
+  onAutoEditComplete?: () => void;
+}
+
 interface EditingState {
-  addressValue: string;
+  key: string;
   notes: string;
   autoFocus?: boolean;
 }
 
-interface AddressListSectionProps {
-  addresses: StoredAddress[];
-  copyToClipboard: (text: string, event?: MouseEvent) => void;
-  formatTime: (timestamp: number) => string;
-  onUpdateNotes: (addressValue: string, notes: string) => Promise<void>;
-  onDeleteAddress: (addressValue: string) => Promise<void>;
-  onClearAllAddresses: () => Promise<void>;
-  autoEditAddress?: string | null;
-  onAutoEditComplete?: () => void;
-}
-
 type SortOrder = 'newest' | 'oldest';
 
-export const AddressListSection: React.FC<AddressListSectionProps> = ({
-  addresses,
+export const ItemListSection: React.FC<ItemListSectionProps> = ({
+  items,
+  config,
   copyToClipboard,
   formatTime,
   onUpdateNotes,
-  onDeleteAddress,
-  onClearAllAddresses,
-  autoEditAddress,
+  onDeleteItem,
+  onClearAll,
+  autoEditKey,
   onAutoEditComplete
 }) => {
-  const [hideAddresses, setHideAddresses] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -76,131 +93,95 @@ export const AddressListSection: React.FC<AddressListSectionProps> = ({
   const notesInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (autoEditAddress) {
-      const address = addresses.find(addr => addr.value === autoEditAddress);
-      if (address) {
-        setEditing({
-          addressValue: address.value,
-          notes: address.notes || '',
-          autoFocus: true
-        });
-        if (onAutoEditComplete) {
-          onAutoEditComplete();
-        }
-
+    if (autoEditKey) {
+      const item = items.find(i => i.key === autoEditKey);
+      if (item) {
+        setEditing({ key: item.key, notes: item.notes || '', autoFocus: true });
+        onAutoEditComplete?.();
         setTimeout(() => {
           notesInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
           notesInputRef.current?.focus();
         }, 100);
       }
     }
-  }, [autoEditAddress, addresses, onAutoEditComplete]);
+  }, [autoEditKey, items, onAutoEditComplete]);
 
-  const handleEditNotes = useCallback((address: StoredAddress) => {
-    setEditing({
-      addressValue: address.value,
-      notes: address.notes || '',
-      autoFocus: true
+  useEffect(() => {
+    chrome.storage.local.get(config.hideStorageKey, (result) => {
+      setHidden(result[config.hideStorageKey] || false);
     });
+  }, [config.hideStorageKey]);
 
-    setTimeout(() => {
-      notesInputRef.current?.focus();
-    }, 50);
+  const toggleHidden = useCallback(() => {
+    setHidden(prev => {
+      const newState = !prev;
+      chrome.storage.local.set({ [config.hideStorageKey]: newState });
+      return newState;
+    });
+  }, [config.hideStorageKey]);
+
+  const handleEditNotes = useCallback((item: ListItem) => {
+    setEditing({ key: item.key, notes: item.notes || '', autoFocus: true });
+    setTimeout(() => notesInputRef.current?.focus(), 50);
   }, []);
 
   const handleSaveNotes = useCallback(async () => {
     if (!editing) return;
-
-    await onUpdateNotes(editing.addressValue, editing.notes);
+    await onUpdateNotes(editing.key, editing.notes);
     setEditing(null);
   }, [editing, onUpdateNotes]);
 
-  const handleCancelEdit = useCallback(() => {
-    setEditing(null);
-  }, []);
-
-  const handleDeleteClick = useCallback((addressValue: string) => {
-    setDeleteConfirm(addressValue);
-  }, []);
+  const handleCancelEdit = useCallback(() => setEditing(null), []);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (deleteConfirm) {
-      await onDeleteAddress(deleteConfirm);
+      await onDeleteItem(deleteConfirm);
       setDeleteConfirm(null);
     }
-  }, [deleteConfirm, onDeleteAddress]);
+  }, [deleteConfirm, onDeleteItem]);
 
   const handleClearConfirm = useCallback(async () => {
-    await onClearAllAddresses();
+    await onClearAll();
     setShowClearConfirm(false);
-  }, [onClearAllAddresses]);
+  }, [onClearAll]);
 
-  const toggleHideAddresses = useCallback(() => {
-    setHideAddresses(prev => {
-      const newState = !prev;
-      storageService.setHideGeneratedAddresses(newState);
-      return newState;
-    });
-  }, []);
-
-  useEffect(() => {
-    const fetchHideAddresses = async () => {
-      const storedHide = await storageService.getHideGeneratedAddresses();
-      setHideAddresses(storedHide);
-    };
-    fetchHideAddresses();
-  }, []);
-
-  const filteredAndSortedAddresses = useMemo(() => {
-    let filtered = addresses;
-
+  const filteredAndSorted = useMemo(() => {
+    let filtered = items;
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = addresses.filter(addr =>
-        addr.value.toLowerCase().includes(query) ||
-        (addr.notes && addr.notes.toLowerCase().includes(query))
+      filtered = items.filter(item =>
+        item.primaryText.toLowerCase().includes(query) ||
+        (item.secondaryText && item.secondaryText.toLowerCase().includes(query)) ||
+        (item.notes && item.notes.toLowerCase().includes(query))
       );
     }
-
     const sorted = [...filtered];
-    switch (sortOrder) {
-      case 'newest':
-        sorted.sort((a, b) => b.timestamp - a.timestamp);
-        break;
-      case 'oldest':
-        sorted.sort((a, b) => a.timestamp - b.timestamp);
-        break;
+    if (sortOrder === 'newest') {
+      sorted.sort((a, b) => b.timestamp - a.timestamp);
+    } else {
+      sorted.sort((a, b) => a.timestamp - b.timestamp);
     }
-
     return sorted;
-  }, [addresses, searchQuery, sortOrder]);
+  }, [items, searchQuery, sortOrder]);
 
   const cycleSortOrder = useCallback(() => {
-    setSortOrder(current => {
-      if (current === 'newest') return 'oldest';
-      return 'newest';
-    });
+    setSortOrder(current => current === 'newest' ? 'oldest' : 'newest');
   }, []);
 
-  const getSortLabel = () => {
-    switch (sortOrder) {
-      case 'newest': return 'Newest';
-      case 'oldest': return 'Oldest';
-    }
-  };
+  const getSortLabel = () => sortOrder === 'newest' ? 'Newest' : 'Oldest';
 
-  const addressList = useMemo(() => {
-    if (addresses.length === 0) {
+  const itemList = useMemo(() => {
+    if (items.length === 0) {
       return (
         <EmptyState>
           <MdSearch />
-          <h3>No addresses yet</h3>
-          <p>Click the button above to generate your first address</p>
+          <h3>{config.emptyTitle}</h3>
+          <p>{config.emptySubtitle}</p>
         </EmptyState>
       );
     }
 
-    if (filteredAndSortedAddresses.length === 0) {
+    if (filteredAndSorted.length === 0) {
       return (
         <EmptyState>
           <MdSearch />
@@ -211,85 +192,59 @@ export const AddressListSection: React.FC<AddressListSectionProps> = ({
     }
 
     return (
-      <AddressList
-        hidden={hideAddresses}
-        role="list"
-        aria-label="Generated email addresses"
-      >
-        {filteredAndSortedAddresses.map((address, index) => (
-          <AddressItem
-            key={`${address.value}-${index}`}
-            role="listitem"
-          >
+      <AddressList hidden={hidden} role="list" aria-label={config.title}>
+        {filteredAndSorted.map((item, index) => (
+          <AddressItem key={`${item.key}-${index}`} role="listitem">
             <AddressMain>
               <AddressHeader
-                onClick={(e) => copyToClipboard(address.value + "@duck.com", e.nativeEvent)}
+                onClick={(e) => copyToClipboard(item.copyText, e.nativeEvent)}
                 role="button"
-                aria-label={`Copy ${address.value}@duck.com to clipboard`}
+                aria-label={item.copyLabel}
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    copyToClipboard(address.value + "@duck.com", e.nativeEvent as unknown as MouseEvent);
+                    copyToClipboard(item.copyText, e.nativeEvent as unknown as MouseEvent);
                   }
                 }}
               >
-                <AddressText>{address.value}@duck.com</AddressText>
+                <AddressText>{item.primaryText}</AddressText>
+                {item.secondaryText && <ItemSubtext>{item.secondaryText}</ItemSubtext>}
               </AddressHeader>
             </AddressMain>
-            <AddressTime>{formatTime(address.timestamp)}</AddressTime>
+            <AddressTime>{formatTime(item.timestamp)}</AddressTime>
 
-            {editing && editing.addressValue === address.value ? (
+            {editing && editing.key === item.key ? (
               <NotesEditContainer>
                 <NotesInput
                   ref={editing.autoFocus ? notesInputRef : null}
                   value={editing.notes}
-                  onChange={(e) => setEditing({...editing, notes: e.target.value})}
+                  onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleSaveNotes();
-                    } else if (e.key === 'Escape') {
-                      e.preventDefault();
-                      handleCancelEdit();
-                    }
+                    if (e.key === 'Enter') { e.preventDefault(); handleSaveNotes(); }
+                    else if (e.key === 'Escape') { e.preventDefault(); handleCancelEdit(); }
                   }}
-                  placeholder="Add notes for this address..."
-                  aria-label="Edit notes for this address"
+                  placeholder="Add notes..."
+                  aria-label="Edit notes"
                   autoFocus={editing.autoFocus}
                 />
                 <NotesActions>
-                  <IconButton
-                    onClick={handleSaveNotes}
-                    aria-label="Save notes"
-                  >
+                  <IconButton onClick={handleSaveNotes} aria-label="Save notes">
                     <MdCheck size={18} />
                   </IconButton>
-                  <IconButton
-                    onClick={handleCancelEdit}
-                    aria-label="Cancel editing"
-                  >
+                  <IconButton onClick={handleCancelEdit} aria-label="Cancel editing">
                     <MdClose size={18} />
                   </IconButton>
                 </NotesActions>
               </NotesEditContainer>
             ) : (
               <NotesContainer>
-                {address.notes && (
-                  <Notes>{address.notes}</Notes>
-                )}
+                {item.notes && <Notes>{item.notes}</Notes>}
                 <ButtonsContainer className="action-buttons">
-                  <IconButton
-                    onClick={() => handleEditNotes(address)}
-                    aria-label="Edit notes"
-                  >
+                  <IconButton onClick={() => handleEditNotes(item)} aria-label="Edit notes">
                     <MdEdit size={18} />
                   </IconButton>
-                  <IconButton
-                    className="delete"
-                    onClick={() => handleDeleteClick(address.value)}
-                    aria-label="Delete address"
-                  >
+                  <IconButton className="delete" onClick={() => setDeleteConfirm(item.key)} aria-label="Delete">
                     <MdDelete size={18} />
                   </IconButton>
                 </ButtonsContainer>
@@ -299,62 +254,44 @@ export const AddressListSection: React.FC<AddressListSectionProps> = ({
         ))}
       </AddressList>
     );
-  }, [filteredAndSortedAddresses, hideAddresses, editing, copyToClipboard, formatTime, handleEditNotes, handleSaveNotes, handleCancelEdit, handleDeleteClick]);
+  }, [filteredAndSorted, hidden, editing, copyToClipboard, formatTime, handleEditNotes, handleSaveNotes, handleCancelEdit, config]);
 
   return (
     <>
       <Section>
         <SectionHeader>
-          <h2 id="addresses-heading">Generated Addresses</h2>
+          <h2>{config.title}</h2>
           <HeaderActions>
-            {addresses.length > 0 && (
-              <IconButton
-                className="clear"
-                onClick={() => setShowClearConfirm(true)}
-                aria-label="Clear all addresses"
-              >
+            {items.length > 0 && (
+              <IconButton className="clear" onClick={() => setShowClearConfirm(true)} aria-label={`Clear all ${config.itemsLabel}`}>
                 <MdDeleteSweep size={24} />
               </IconButton>
             )}
-            <IconButton
-              onClick={toggleHideAddresses}
-              aria-label={hideAddresses ? "Show addresses" : "Hide addresses"}
-              aria-expanded={!hideAddresses}
-              aria-controls="addresses-list"
-            >
-              {hideAddresses ? <MdVisibility /> : <MdVisibilityOff />}
+            <IconButton onClick={toggleHidden} aria-label={hidden ? `Show ${config.itemsLabel}` : `Hide ${config.itemsLabel}`} aria-expanded={!hidden}>
+              {hidden ? <MdVisibility /> : <MdVisibilityOff />}
             </IconButton>
           </HeaderActions>
         </SectionHeader>
 
-        {addresses.length > 0 && (
+        {items.length > 0 && (
           <>
             <SearchContainer>
               <SearchInputWrapper>
-                <SearchIcon>
-                  <MdSearch size={20} />
-                </SearchIcon>
+                <SearchIcon><MdSearch size={20} /></SearchIcon>
                 <SearchInput
                   type="text"
-                  placeholder="Search addresses or notes..."
+                  placeholder={config.searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  aria-label="Search addresses"
+                  aria-label={`Search ${config.itemsLabel}`}
                 />
                 {searchQuery && (
-                  <ClearSearchButton
-                    onClick={() => setSearchQuery('')}
-                    aria-label="Clear search"
-                  >
+                  <ClearSearchButton onClick={() => setSearchQuery('')} aria-label="Clear search">
                     <MdClear size={20} />
                   </ClearSearchButton>
                 )}
               </SearchInputWrapper>
-              <SortButton
-                onClick={cycleSortOrder}
-                active={sortOrder !== 'newest'}
-                aria-label={`Sort by ${getSortLabel()}`}
-              >
+              <SortButton onClick={cycleSortOrder} active={sortOrder !== 'newest'} aria-label={`Sort by ${getSortLabel()}`}>
                 <MdSort />
                 {getSortLabel()}
               </SortButton>
@@ -363,22 +300,20 @@ export const AddressListSection: React.FC<AddressListSectionProps> = ({
             {searchQuery && (
               <SearchInfo>
                 <span>
-                  Showing <ResultCount>{filteredAndSortedAddresses.length}</ResultCount> of {addresses.length} addresses
+                  Showing <ResultCount>{filteredAndSorted.length}</ResultCount> of {items.length} {config.itemsLabel}
                 </span>
               </SearchInfo>
             )}
           </>
         )}
 
-        <div id="addresses-list" aria-labelledby="addresses-heading">
-          {addressList}
-        </div>
+        {itemList}
       </Section>
 
       <ConfirmDialog
         isOpen={deleteConfirm !== null}
-        title="Delete Address"
-        message={`Are you sure you want to delete this address\n(${deleteConfirm}@duck.com)?`}
+        title={config.deleteTitle}
+        message={deleteConfirm ? config.getDeleteMessage(deleteConfirm) : ''}
         confirmLabel="Delete"
         cancelLabel="Cancel"
         onConfirm={handleDeleteConfirm}
@@ -387,8 +322,8 @@ export const AddressListSection: React.FC<AddressListSectionProps> = ({
 
       <ConfirmDialog
         isOpen={showClearConfirm}
-        title="Clear All Addresses"
-        message={"Are you sure you want to clear all addresses?\n\nThis action cannot be undone."}
+        title={config.clearTitle}
+        message={config.clearMessage}
         confirmLabel="Clear All"
         cancelLabel="Cancel"
         onConfirm={handleClearConfirm}

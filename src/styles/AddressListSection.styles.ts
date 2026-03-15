@@ -303,3 +303,11 @@ export const ButtonsContainer = styled.div`
   display: flex;
   gap: 4px;
 `
+
+export const ItemSubtext = styled.div`
+  font-size: 11px;
+  color: ${props => props.theme.textTertiary};
+  word-break: break-all;
+  margin-top: 2px;
+  font-family: monospace;
+`

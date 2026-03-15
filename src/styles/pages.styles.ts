@@ -127,6 +127,80 @@ export const GenerateButton = styled(PrimaryButton)`
   margin-bottom: 24px;
 `
 
+export const ReverseAliasSection = styled.div`
+  margin-bottom: 24px;
+  padding: 14px;
+  background: ${props => props.theme.surfaceElevated};
+  border: 1px solid ${props => props.theme.borderLight};
+  border-radius: 8px;
+`
+
+export const ReverseAliasSteps = styled.ol`
+  margin: 0 0 12px 0;
+  padding-left: 20px;
+  font-size: 12px;
+  color: ${props => props.theme.textSecondary};
+  line-height: 1.6;
+
+  li {
+    margin-bottom: 2px;
+  }
+
+  strong {
+    color: ${props => props.theme.text};
+  }
+`
+
+export const ReverseAliasInputRow = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+`
+
+export const ReverseAliasInput = styled(BaseInput)`
+  padding: 10px 12px;
+  font-size: 13px;
+  flex: 1;
+`
+
+export const ReverseAliasConvertButton = styled.button`
+  padding: 10px 14px;
+  background: ${props => props.theme.primary};
+  color: ${props => props.theme.textOnPrimary};
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`
+
+export const ReverseAliasResult = styled.div`
+  padding: 10px 12px;
+  background: ${props => props.theme.surface};
+  border: 1px solid ${props => props.theme.border};
+  border-radius: 8px;
+  font-size: 12px;
+  color: ${props => props.theme.text};
+  word-break: break-all;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: ${props => props.theme.primary};
+  }
+`
+
 
 export const SettingsContainer = styled.div`
   padding: 16px 20px;

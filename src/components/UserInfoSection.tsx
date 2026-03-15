@@ -39,7 +39,7 @@ export const UserInfoSection: React.FC<UserInfoSectionProps> = ({
   return (
     <UserInfoCard>
       <SectionHeader style={hideUserInfo ? { marginBottom: 0 } : undefined}>
-        <h2 id="user-info-heading">User Information</h2>
+        <h2 id="user-info-heading">My Account</h2>
         <UserInfoIconButton
           onClick={toggleHideUserInfo}
           aria-label={hideUserInfo ? "Show user information" : "Hide user information"}

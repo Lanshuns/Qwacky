@@ -1,7 +1,7 @@
 import { AuthService } from './AuthService'
 import { StorageService } from './StorageService'
 import { ImportExportService } from './ImportExportService'
-import { LoginResponse, VerifyResponse, GenerateResponse, UserData } from '../types'
+import { LoginResponse, VerifyResponse, GenerateResponse, UserData, ReverseAlias } from '../types'
 
 export class DuckService {
   private auth: AuthService
@@ -185,11 +185,60 @@ export class DuckService {
       return await this.importExport.importAddresses(data)
     } catch (error: unknown) {
       console.error('Error importing addresses:', error)
-      return { 
-        success: false, 
-        count: 0, 
+      return {
+        success: false,
+        count: 0,
         error: error instanceof Error ? error.message : 'Unknown error importing addresses'
       }
+    }
+  }
+
+  async saveReverseAlias(recipientEmail: string, alias: string, notes?: string): Promise<boolean> {
+    try {
+      if (!recipientEmail) return false
+      await this.storage.saveReverseAlias(recipientEmail, alias, notes)
+      return true
+    } catch (error: unknown) {
+      console.error('Error saving reverse alias:', error)
+      return false
+    }
+  }
+
+  async getReverseAliases(): Promise<ReverseAlias[]> {
+    try {
+      return await this.storage.getReverseAliases()
+    } catch (error: unknown) {
+      console.error('Error getting reverse aliases:', error)
+      return []
+    }
+  }
+
+  async updateReverseAliasNotes(recipientEmail: string, notes: string): Promise<boolean> {
+    try {
+      if (!recipientEmail) return false
+      return await this.storage.updateReverseAliasNotes(recipientEmail, notes)
+    } catch (error: unknown) {
+      console.error('Error updating reverse alias notes:', error)
+      return false
+    }
+  }
+
+  async deleteReverseAlias(recipientEmail: string): Promise<boolean> {
+    try {
+      if (!recipientEmail) return false
+      return await this.storage.deleteReverseAlias(recipientEmail)
+    } catch (error: unknown) {
+      console.error('Error deleting reverse alias:', error)
+      return false
+    }
+  }
+
+  async clearAllReverseAliases(): Promise<boolean> {
+    try {
+      return await this.storage.clearAllReverseAliases()
+    } catch (error: unknown) {
+      console.error('Error clearing reverse aliases:', error)
+      return false
     }
   }
 }

@@ -1,4 +1,4 @@
-import { UserData } from '../types';
+import { UserData, ReverseAlias } from '../types';
 import { SyncService } from './SyncService';
 
 interface Address {
@@ -340,5 +340,110 @@ export class StorageService {
 
   async setHideGeneratedAddresses(hide: boolean): Promise<void> {
     await chrome.storage.local.set({ hide_generated_addresses: hide });
+  }
+
+  async saveReverseAlias(recipientEmail: string, alias: string, notes?: string): Promise<void> {
+    try {
+      const username = await this.getCurrentUsername();
+      if (!username) throw new Error('User data not found');
+
+      const key = `reverse_aliases_${username}`;
+      const result = await chrome.storage.local.get(key);
+      const existing: ReverseAlias[] = result[key] || [];
+
+      const duplicate = existing.find(a => a.recipientEmail === recipientEmail);
+      if (duplicate) return;
+
+      const newAlias: ReverseAlias = {
+        recipientEmail,
+        alias,
+        timestamp: Date.now(),
+        lastModified: Date.now(),
+        notes: notes || '',
+        username
+      };
+
+      await chrome.storage.local.set({ [key]: [newAlias, ...existing] });
+    } catch (error) {
+      console.error('Error saving reverse alias:', error);
+    }
+  }
+
+  async getReverseAliases(): Promise<ReverseAlias[]> {
+    try {
+      const username = await this.getCurrentUsername();
+      if (!username) return [];
+
+      const key = `reverse_aliases_${username}`;
+      const result = await chrome.storage.local.get(key);
+      return result[key] || [];
+    } catch (error) {
+      console.error('Error getting reverse aliases:', error);
+      return [];
+    }
+  }
+
+  async updateReverseAliasNotes(recipientEmail: string, notes: string): Promise<boolean> {
+    try {
+      const username = await this.getCurrentUsername();
+      if (!username) return false;
+
+      const key = `reverse_aliases_${username}`;
+      const result = await chrome.storage.local.get(key);
+      const aliases: ReverseAlias[] = result[key] || [];
+
+      const updated = aliases.map(a =>
+        a.recipientEmail === recipientEmail
+          ? { ...a, notes, lastModified: Date.now() }
+          : a
+      );
+
+      await chrome.storage.local.set({ [key]: updated });
+      return true;
+    } catch (error) {
+      console.error('Error updating reverse alias notes:', error);
+      return false;
+    }
+  }
+
+  async deleteReverseAlias(recipientEmail: string): Promise<boolean> {
+    try {
+      const username = await this.getCurrentUsername();
+      if (!username) return false;
+
+      const key = `reverse_aliases_${username}`;
+      const result = await chrome.storage.local.get(key);
+      const aliases: ReverseAlias[] = result[key] || [];
+
+      const filtered = aliases.filter(a => a.recipientEmail !== recipientEmail);
+      await chrome.storage.local.set({ [key]: filtered });
+      return true;
+    } catch (error) {
+      console.error('Error deleting reverse alias:', error);
+      return false;
+    }
+  }
+
+  async clearAllReverseAliases(): Promise<boolean> {
+    try {
+      const username = await this.getCurrentUsername();
+      if (!username) return false;
+
+      const key = `reverse_aliases_${username}`;
+      await chrome.storage.local.set({ [key]: [] });
+      return true;
+    } catch (error) {
+      console.error('Error clearing reverse aliases:', error);
+      return false;
+    }
+  }
+
+  async getHideReverseAliases(): Promise<boolean> {
+    const result = await chrome.storage.local.get('hide_reverse_aliases');
+    return result.hide_reverse_aliases || false;
+  }
+
+  async setHideReverseAliases(hide: boolean): Promise<void> {
+    await chrome.storage.local.set({ hide_reverse_aliases: hide });
   }
 }

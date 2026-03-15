@@ -29,4 +29,13 @@ export interface GenerateResponse {
   status: string;
   address?: string;
   message?: string;
+}
+
+export interface ReverseAlias {
+  recipientEmail: string;
+  alias: string;
+  timestamp: number;
+  lastModified?: number;
+  notes?: string;
+  username: string;
 } 
