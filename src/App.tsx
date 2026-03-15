@@ -5,6 +5,7 @@ import { OTP } from './pages/OTP'
 import { Dashboard } from './pages/Dashboard'
 import { Settings } from './pages/Settings'
 import { Changelog } from './pages/Changelog'
+import { About } from './pages/About'
 import { Header } from './components/Header'
 import { theme } from './theme'
 import { useState, useEffect } from 'react'
@@ -12,6 +13,16 @@ import { useState, useEffect } from 'react'
 const APP_VERSION = '1.2.1'
 
 const GlobalStyle = createGlobalStyle`
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
   * {
     box-sizing: border-box;
     margin: 0;
@@ -22,22 +33,29 @@ const GlobalStyle = createGlobalStyle`
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
       Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     background: ${props => props.theme.background};
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: ${props => props.theme.primary}30;
+    color: ${props => props.theme.text};
   }
 
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    background: ${props => props.theme.surface};
-    border-radius: 4px;
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
     background: ${props => props.theme.border};
-    border-radius: 4px;
-    
+    border-radius: 3px;
+    transition: background 0.2s;
+
     &:hover {
       background: ${props => `${props.theme.primary}80`};
     }
@@ -45,11 +63,13 @@ const GlobalStyle = createGlobalStyle`
 `
 
 const Container = styled.div`
-  width: 360px;
+  width: 400px;
   min-height: 480px;
   color: ${props => props.theme.text};
   position: relative;
-  margin: auto; /* Centers it when opened in fullscreen in Firefox for Android */
+  margin: auto;
+  background: ${props => props.theme.background};
+  overflow: hidden;
 `
 
 export const App = () => {
@@ -58,6 +78,7 @@ export const App = () => {
   const [tempUsername, setTempUsername] = useState('')
   const [showSettings, setShowSettings] = useState(false)
   const [showChangelog, setShowChangelog] = useState(false)
+  const [showAbout, setShowAbout] = useState(false)
   const [addingAccount, setAddingAccount] = useState(false)
 
   useEffect(() => {
@@ -127,6 +148,7 @@ export const App = () => {
     chrome.storage.local.set({ showSettings: newShowSettings })
     if (newShowSettings) {
       setShowChangelog(false)
+      setShowAbout(false)
     }
   }
   
@@ -135,6 +157,17 @@ export const App = () => {
     setShowChangelog(newShowChangelog)
     if (newShowChangelog) {
       setShowSettings(false)
+      setShowAbout(false)
+      chrome.storage.local.set({ showSettings: false })
+    }
+  }
+
+  const toggleAbout = () => {
+    const newShowAbout = !showAbout
+    setShowAbout(newShowAbout)
+    if (newShowAbout) {
+      setShowSettings(false)
+      setShowChangelog(false)
       chrome.storage.local.set({ showSettings: false })
     }
   }
@@ -161,6 +194,9 @@ export const App = () => {
   }
   
   const renderCurrentPage = () => {
+    if (showSettings) return <Settings onBack={toggleSettings} />
+    if (showAbout) return <About onBack={toggleAbout} />
+
     if (!userData || addingAccount) {
       if (currentPage === 'login') {
         return (
@@ -169,6 +205,7 @@ export const App = () => {
               updateLoginState('otp', username)
               setShowSettings(false)
               setShowChangelog(false)
+              setShowAbout(false)
               chrome.storage.local.set({ showSettings: false })
             }}
             isAddingAccount={addingAccount}
@@ -187,6 +224,7 @@ export const App = () => {
               }
               setShowSettings(false)
               setShowChangelog(false)
+              setShowAbout(false)
               chrome.storage.local.set({ showSettings: false })
             }}
             isAddingAccount={addingAccount}
@@ -196,6 +234,7 @@ export const App = () => {
               }
               setShowSettings(false)
               setShowChangelog(false)
+              setShowAbout(false)
               chrome.storage.local.set({ showSettings: false })
             }}
           />
@@ -204,7 +243,6 @@ export const App = () => {
     }
 
     if (userData && !addingAccount) {
-      if (showSettings) return <Settings onBack={toggleSettings} />
       if (showChangelog) return <Changelog onBack={toggleChangelog} />
       return <Dashboard />
     }
@@ -216,10 +254,11 @@ export const App = () => {
     <ThemeProvider theme={darkMode ? theme.dark : theme.light}>
       <GlobalStyle />
       <Container>
-        <Header 
-          onSettingsClick={toggleSettings} 
+        <Header
+          onSettingsClick={toggleSettings}
           onAddAccountClick={handleAddAccount}
           onChangelogClick={toggleChangelog}
+          onAboutClick={toggleAbout}
         />
         {renderCurrentPage()}
       </Container>

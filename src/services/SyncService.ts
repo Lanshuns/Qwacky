@@ -368,13 +368,10 @@ export class SyncService {
 
     await this.saveToSessionCache(accountKey, mergedAddresses);
 
-    try {
-      chrome.runtime.sendMessage({
-        action: 'syncAddressesUpdated',
-        addresses: mergedAddresses
-      });
-    } catch (error) {
-    }
+    chrome.runtime.sendMessage({
+      action: 'syncAddressesUpdated',
+      addresses: mergedAddresses
+    }).catch(() => {});
   }
 
   async pullFromSync(): Promise<{ success: boolean; message: string }> {
@@ -440,13 +437,10 @@ export class SyncService {
         }
       }
 
-      try {
-        chrome.runtime.sendMessage({
-          action: 'syncAddressesUpdated',
-          addresses: mergedAddresses
-        });
-      } catch (error) {
-      }
+      chrome.runtime.sendMessage({
+        action: 'syncAddressesUpdated',
+        addresses: mergedAddresses
+      }).catch(() => {});
 
       return { 
         success: true, 

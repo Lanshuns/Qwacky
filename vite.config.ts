@@ -30,6 +30,7 @@ const copyManifest = () => {
       }
 
       copyFileSync('CHANGELOG.md', 'dist/CHANGELOG.md')
+
     }
   }
 }

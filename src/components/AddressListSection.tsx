@@ -1,306 +1,36 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import styled from 'styled-components';
 import { MdVisibility, MdVisibilityOff, MdEdit, MdCheck, MdClose, MdDelete, MdDeleteSweep, MdSearch, MdSort, MdClear } from "react-icons/md";
 import { ConfirmDialog } from './ConfirmDialog';
 import { StorageService } from '../services/StorageService';
+import { SectionHeader } from '../styles/SharedStyles';
+import {
+  Section,
+  HeaderActions,
+  SearchContainer,
+  SearchInputWrapper,
+  SearchInput,
+  SearchIcon,
+  ClearSearchButton,
+  SortButton,
+  SearchInfo,
+  ResultCount,
+  EmptyState,
+  AddressList,
+  IconButton,
+  AddressItem,
+  AddressMain,
+  AddressHeader,
+  AddressText,
+  AddressTime,
+  NotesContainer,
+  Notes,
+  NotesEditContainer,
+  NotesInput,
+  NotesActions,
+  ButtonsContainer
+} from '../styles/AddressListSection.styles';
 
 const storageService = new StorageService();
-
-const Section = styled.div`
-  margin-bottom: 32px;
-`;
-
-const SectionHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-
-  h2 {
-    font-size: 18px;
-    margin: 0;
-  }
-`;
-
-const HeaderActions = styled.div`
-  display: flex;
-  gap: 8px;
-`;
-
-const SearchContainer = styled.div`
-  margin-bottom: 16px;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-`;
-
-const SearchInputWrapper = styled.div`
-  position: relative;
-  flex: 1;
-  display: flex;
-  align-items: center;
-`;
-
-const SearchInput = styled.input`
-  width: 100%;
-  padding: 10px 12px 10px 38px;
-  border: 2px solid ${props => props.theme.border};
-  border-radius: 8px;
-  background: ${props => props.theme.surface};
-  color: ${props => props.theme.text};
-  font-size: 13px;
-
-  &:focus {
-    outline: none;
-    border-color: ${props => props.theme.primary};
-    box-shadow: 0 0 0 3px ${props => props.theme.primary}15;
-  }
-
-  &::placeholder {
-    color: ${props => props.theme.textTertiary};
-    font-size: 13px;
-  }
-`;
-
-const SearchIcon = styled.div`
-  position: absolute;
-  left: 12px;
-  color: ${props => props.theme.textSecondary};
-  display: flex;
-  align-items: center;
-`;
-
-const ClearSearchButton = styled.button`
-  position: absolute;
-  right: 8px;
-  background: none;
-  border: none;
-  color: ${props => props.theme.textSecondary};
-  cursor: pointer;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  border-radius: 4px;
-
-  &:hover {
-    background: ${props => props.theme.hover};
-    color: ${props => props.theme.text};
-  }
-`;
-
-const SortButton = styled.button<{ active?: boolean }>`
-  padding: 10px 12px;
-  background: ${props => props.active ? props.theme.primary : props.theme.surface};
-  color: ${props => props.active ? 'white' : props.theme.text};
-  border: 2px solid ${props => props.active ? props.theme.primary : props.theme.border};
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
-
-  &:hover {
-    background: ${props => props.active ? props.theme.primary : props.theme.hover};
-    border-color: ${props => props.theme.primary};
-  }
-
-  svg {
-    font-size: 18px;
-  }
-`;
-
-const SearchInfo = styled.div`
-  margin-bottom: 12px;
-  font-size: 13px;
-  color: ${props => props.theme.textSecondary};
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const ResultCount = styled.span`
-  font-weight: 500;
-  color: ${props => props.theme.primary};
-`;
-
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 40px 20px;
-  color: ${props => props.theme.textSecondary};
-
-  svg {
-    font-size: 48px;
-    color: ${props => props.theme.textTertiary};
-    margin-bottom: 16px;
-  }
-
-  h3 {
-    font-size: 16px;
-    margin: 0 0 8px 0;
-    color: ${props => props.theme.text};
-  }
-
-  p {
-    font-size: 14px;
-    margin: 0;
-  }
-`;
-
-const AddressList = styled.div<{ hidden?: boolean }>`
-  background: ${(props) => props.theme.surface};
-  border-radius: 8px;
-  padding: 12px;
-  max-height: 600px;
-  overflow-y: auto;
-
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: ${props => props.theme.border};
-    border-radius: 4px;
-
-    &:hover {
-      background: ${props => props.theme.textSecondary};
-    }
-  }
-`;
-
-const IconButton = styled.button`
-  background: none;
-  border: none;
-  color: ${(props) => props.theme.text};
-  cursor: pointer;
-  padding: 4px;
-
-  svg {
-    width: 24px;
-    height: 24px;
-  }
-  
-  &.delete {
-    color: #e53935;
-    
-    &:hover {
-      color: #c62828;
-    }
-  }
-
-  &.clear {
-    color: #e53935;
-    
-    &:hover {
-      color: #c62828;
-    }
-  }
-`;
-
-const AddressItem = styled.div`
-  border-bottom: 1px solid ${props => props.theme.border};
-  padding: 12px 0;
-  position: relative;
-  
-  &:last-child {
-    border-bottom: none;
-  }
-
-  .action-buttons {
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-
-  &:hover .action-buttons {
-    opacity: 1;
-  }
-`;
-
-const AddressMain = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 6px;
-`;
-
-const AddressHeader = styled.div`
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 6px;
-  
-  &:hover {
-    background-color: ${props => props.theme.hover};
-  }
-`;
-
-const AddressText = styled.div`
-  font-weight: 500;
-  word-break: break-all;
-  color: ${props => props.theme.text};
-`;
-
-const AddressTime = styled.div`
-  color: ${props => props.theme.textSecondary};
-  font-size: 11px;
-  font-weight: 400;
-  padding-left: 8px;
-`;
-
-const NotesContainer = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 8px 4px 8px;
-  font-size: 14px;
-`;
-
-const Notes = styled.div`
-  color: ${props => props.theme.textSecondary};
-  flex: 1;
-  word-wrap: break-word;
-`;
-
-const EmptyNotes = styled.div`
-  color: ${props => props.theme.textTertiary};
-  font-style: italic;
-  flex: 1;
-`;
-
-const NotesEditContainer = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
-`;
-
-const NotesInput = styled.input`
-  flex: 1;
-  padding: 6px 8px;
-  border: 1px solid ${props => props.theme.border};
-  border-radius: 4px;
-  background-color: ${props => props.theme.inputBackground};
-  color: ${props => props.theme.text};
-  
-  &:focus {
-    outline: none;
-    border-color: ${props => props.theme.primary};
-  }
-`;
-
-const NotesActions = styled.div`
-  display: flex;
-  gap: 4px;
-`;
-
-const ButtonsContainer = styled.div`
-  display: flex;
-  gap: 4px;
-`;
 
 interface StoredAddress {
   value: string;
@@ -357,7 +87,7 @@ export const AddressListSection: React.FC<AddressListSectionProps> = ({
         if (onAutoEditComplete) {
           onAutoEditComplete();
         }
-        
+
         setTimeout(() => {
           notesInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
           notesInputRef.current?.focus();
@@ -372,7 +102,7 @@ export const AddressListSection: React.FC<AddressListSectionProps> = ({
       notes: address.notes || '',
       autoFocus: true
     });
-    
+
     setTimeout(() => {
       notesInputRef.current?.focus();
     }, 50);
@@ -380,7 +110,7 @@ export const AddressListSection: React.FC<AddressListSectionProps> = ({
 
   const handleSaveNotes = useCallback(async () => {
     if (!editing) return;
-    
+
     await onUpdateNotes(editing.addressValue, editing.notes);
     setEditing(null);
   }, [editing, onUpdateNotes]);
@@ -426,7 +156,7 @@ export const AddressListSection: React.FC<AddressListSectionProps> = ({
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = addresses.filter(addr => 
+      filtered = addresses.filter(addr =>
         addr.value.toLowerCase().includes(query) ||
         (addr.notes && addr.notes.toLowerCase().includes(query))
       );
@@ -481,18 +211,18 @@ export const AddressListSection: React.FC<AddressListSectionProps> = ({
     }
 
     return (
-      <AddressList 
-        hidden={hideAddresses} 
-        role="list" 
+      <AddressList
+        hidden={hideAddresses}
+        role="list"
         aria-label="Generated email addresses"
       >
         {filteredAndSortedAddresses.map((address, index) => (
-          <AddressItem 
-            key={`${address.value}-${index}`} 
+          <AddressItem
+            key={`${address.value}-${index}`}
             role="listitem"
           >
             <AddressMain>
-              <AddressHeader 
+              <AddressHeader
                 onClick={(e) => copyToClipboard(address.value + "@duck.com", e.nativeEvent)}
                 role="button"
                 aria-label={`Copy ${address.value}@duck.com to clipboard`}
@@ -508,10 +238,10 @@ export const AddressListSection: React.FC<AddressListSectionProps> = ({
               </AddressHeader>
             </AddressMain>
             <AddressTime>{formatTime(address.timestamp)}</AddressTime>
-            
+
             {editing && editing.addressValue === address.value ? (
               <NotesEditContainer>
-                <NotesInput 
+                <NotesInput
                   ref={editing.autoFocus ? notesInputRef : null}
                   value={editing.notes}
                   onChange={(e) => setEditing({...editing, notes: e.target.value})}
@@ -529,13 +259,13 @@ export const AddressListSection: React.FC<AddressListSectionProps> = ({
                   autoFocus={editing.autoFocus}
                 />
                 <NotesActions>
-                  <IconButton 
+                  <IconButton
                     onClick={handleSaveNotes}
                     aria-label="Save notes"
                   >
                     <MdCheck size={18} />
                   </IconButton>
-                  <IconButton 
+                  <IconButton
                     onClick={handleCancelEdit}
                     aria-label="Cancel editing"
                   >
@@ -545,20 +275,18 @@ export const AddressListSection: React.FC<AddressListSectionProps> = ({
               </NotesEditContainer>
             ) : (
               <NotesContainer>
-                {address.notes ? (
+                {address.notes && (
                   <Notes>{address.notes}</Notes>
-                ) : (
-                  <EmptyNotes>No notes</EmptyNotes>
                 )}
                 <ButtonsContainer className="action-buttons">
-                  <IconButton 
+                  <IconButton
                     onClick={() => handleEditNotes(address)}
                     aria-label="Edit notes"
                   >
                     <MdEdit size={18} />
                   </IconButton>
-                  <IconButton 
-                    className="delete" 
+                  <IconButton
+                    className="delete"
                     onClick={() => handleDeleteClick(address.value)}
                     aria-label="Delete address"
                   >
@@ -580,7 +308,7 @@ export const AddressListSection: React.FC<AddressListSectionProps> = ({
           <h2 id="addresses-heading">Generated Addresses</h2>
           <HeaderActions>
             {addresses.length > 0 && (
-              <IconButton 
+              <IconButton
                 className="clear"
                 onClick={() => setShowClearConfirm(true)}
                 aria-label="Clear all addresses"
@@ -588,7 +316,7 @@ export const AddressListSection: React.FC<AddressListSectionProps> = ({
                 <MdDeleteSweep size={24} />
               </IconButton>
             )}
-            <IconButton 
+            <IconButton
               onClick={toggleHideAddresses}
               aria-label={hideAddresses ? "Show addresses" : "Hide addresses"}
               aria-expanded={!hideAddresses}
