@@ -38,4 +38,57 @@ export interface ReverseAlias {
   lastModified?: number;
   notes?: string;
   username: string;
+}
+
+export interface BackupSummary {
+  action: 'export' | 'import';
+  accounts: Array<{ username: string; addresses: number; reverseAliases: number }>;
+  totalAddresses: number;
+  totalReverseAliases: number;
+  includesSession: boolean;
+  newAddresses?: number;
+  newReverseAliases?: number;
+  newAccounts?: number;
+  skippedAddresses?: number;
+  skippedReverseAliases?: number;
+}
+
+export interface QwackyBackup {
+  version: string;
+  type: 'qwacky_backup';
+  timestamp: number;
+  account: string;
+  addresses: Array<{
+    value: string;
+    timestamp: number;
+    notes?: string;
+  }>;
+  reverseAliases: Array<{
+    recipientEmail: string;
+    alias: string;
+    timestamp: number;
+    notes?: string;
+  }>;
+  session?: {
+    currentAccount: string;
+    accounts: Array<{
+      userData: UserData;
+      username: string;
+      lastUsed: number;
+    }>;
+    perAccountData: {
+      [username: string]: {
+        addresses: any[];
+        reverseAliases: ReverseAlias[];
+      };
+    };
+    settings: {
+      hideUserInfo: boolean;
+      hideGeneratedAddresses: boolean;
+      hideReverseAliases: boolean;
+      contextMenuEnabled: boolean;
+      syncEnabled: boolean;
+      themeMode: string;
+    };
+  };
 } 

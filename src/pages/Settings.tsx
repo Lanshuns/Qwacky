@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { MdFileUpload, MdArrowBack, MdDescription, MdSecurity, MdDownload, MdContentPaste, MdSync, MdRefresh, MdWarning } from "react-icons/md";
+import { MdFileUpload, MdArrowBack, MdDescription, MdSecurity, MdDownload, MdContentPaste, MdSync, MdRefresh, MdWarning, MdKeyboardArrowDown } from "react-icons/md";
 import { DuckService } from "../services/DuckService";
 import { SyncService } from "../services/SyncService";
 import { usePermissions, PERMISSIONS, ALL_PERMISSIONS } from "../context/PermissionContext";
+import { useApp } from "../context/AppContext";
+import { BackupSummary } from "../types";
 import { PermissionToggle } from "../components/PermissionToggle";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Section, SectionHeader, BackButton } from "../styles/SharedStyles";
 import {
   SettingsContainer,
@@ -18,9 +21,16 @@ import {
   SyncStatValue,
   RefreshIconButton,
   ExportButtonsContainer,
-  BackupButtonsContainer,
   BackupButton,
   HiddenFileInput,
+  ExportOptionsContainer,
+  ExportOptionsTitle,
+  ExportOptionRow,
+  ExportOptionHint,
+  DropdownWrapper,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
 } from "../styles/pages.styles";
 
 declare const browser: typeof chrome;
@@ -34,18 +44,54 @@ interface SettingsProps {
 export const Settings = ({ onBack }: SettingsProps) => {
   const [importResult, setImportResult] = useState<string | null>(null);
   const { hasPermissions } = usePermissions();
+  const { accounts, currentAccount } = useApp();
   const [permissionState, setPermissionState] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const duckService = new DuckService();
   const syncService = new SyncService();
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [syncEnabled, setSyncEnabled] = useState(false);
+  const [includeSession, setIncludeSession] = useState(false);
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>(() =>
+    accounts.map(a => a.username)
+  );
+  const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [showExportWarning, setShowExportWarning] = useState(false);
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [backupSummary, setBackupSummary] = useState<BackupSummary | null>(null);
+  const [pendingImportData, setPendingImportData] = useState<string | null>(null);
   const [syncStats, setSyncStats] = useState<{
     lastSync: number | null;
     bytesInUse: number;
     quotaBytes: number;
     percentUsed: number;
   } | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setAccountDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const toggleAccount = (username: string) => {
+    setSelectedAccounts(prev =>
+      prev.includes(username)
+        ? prev.filter(u => u !== username)
+        : [...prev, username]
+    );
+  };
+
+  const getDropdownLabel = () => {
+    if (selectedAccounts.length === 0) return 'Select accounts...';
+    if (selectedAccounts.length === accounts.length) return 'All accounts';
+    if (selectedAccounts.length === 1) return `${selectedAccounts[0]}@duck.com`;
+    return `${selectedAccounts.length} accounts selected`;
+  };
 
   useEffect(() => {
     const loadPermissionStates = async () => {
@@ -189,88 +235,157 @@ export const Settings = ({ onBack }: SettingsProps) => {
     }
   }, []);
 
-  const handleExportAddressesJSON = async () => {
+  const buildSummaryMessage = (s: BackupSummary): React.ReactNode => {
+    const lines: string[] = [];
+
+    if (s.action === 'export') {
+      lines.push(`Accounts: ${s.accounts.map(a => a.username + '@duck.com').join(', ')}`);
+      lines.push(`Addresses: ${s.totalAddresses}`);
+      lines.push(`Reverse aliases: ${s.totalReverseAliases}`);
+      if (s.includesSession) lines.push(`Session data: included`);
+    } else {
+      if (s.newAccounts && s.newAccounts > 0) {
+        lines.push(`New accounts added: ${s.newAccounts}`);
+      }
+      for (const a of s.accounts) {
+        const parts: string[] = [];
+        if (a.addresses > 0) parts.push(`${a.addresses} addresses`);
+        if (a.reverseAliases > 0) parts.push(`${a.reverseAliases} reverse aliases`);
+        if (parts.length > 0) {
+          lines.push(`${a.username}@duck.com: +${parts.join(', ')}`);
+        }
+      }
+      if ((s.skippedAddresses || 0) > 0 || (s.skippedReverseAliases || 0) > 0) {
+        const skipped: string[] = [];
+        if (s.skippedAddresses) skipped.push(`${s.skippedAddresses} addresses`);
+        if (s.skippedReverseAliases) skipped.push(`${s.skippedReverseAliases} reverse aliases`);
+        lines.push(`Skipped (already exist): ${skipped.join(', ')}`);
+      }
+      if (s.newAddresses === 0 && s.newReverseAliases === 0 && (!s.newAccounts || s.newAccounts === 0)) {
+        lines.push('Everything was already up to date.');
+      }
+      if (s.includesSession) lines.push(`Session data: restored`);
+    }
+
+    return lines.join('\n');
+  };
+
+  const handleExport = async () => {
+    if (includeSession) {
+      setShowExportWarning(true);
+      return;
+    }
+    await doExport();
+  };
+
+  const getDateString = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  };
+
+  const doExport = async () => {
     try {
       setLoading(prev => ({ ...prev, export: true }));
 
-      const addresses = await duckService.getAddresses();
-
-      if (!addresses || addresses.length === 0) {
-        setLoading(prev => ({ ...prev, export: false }));
-        return;
-      }
-
-      const exportData = await duckService.exportAddresses();
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(exportData);
+      const { data, summary } = await duckService.exportBackup(selectedAccounts, includeSession);
+      const blob = new Blob([data], { type: 'application/json;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
       const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute("href", dataStr);
-      downloadAnchorNode.setAttribute("download", "qwacky_addresses.json");
+      downloadAnchorNode.setAttribute("href", url);
+      downloadAnchorNode.setAttribute("download", `qwacky_backup_${getDateString()}.json`);
       document.body.appendChild(downloadAnchorNode);
       downloadAnchorNode.click();
       downloadAnchorNode.remove();
-
+      URL.revokeObjectURL(url);
+      setBackupSummary(summary);
     } catch (error) {
-      console.error("Failed to export addresses:", error);
+      console.error("Failed to export backup:", error);
+      setImportResult("Failed to export backup");
     } finally {
       setLoading(prev => ({ ...prev, export: false }));
     }
   };
 
-  const handleExportAddressesCSV = async () => {
-    try {
-      setLoading(prev => ({ ...prev, exportCSV: true }));
-
-      const addresses = await duckService.getAddresses();
-
-      if (!addresses || addresses.length === 0) {
-        setLoading(prev => ({ ...prev, exportCSV: false }));
-        return;
-      }
-
-      const csvData = await duckService.exportAddressesCSV();
-      const dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csvData);
-      const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute("href", dataStr);
-      downloadAnchorNode.setAttribute("download", "qwacky_addresses.csv");
-      document.body.appendChild(downloadAnchorNode);
-      downloadAnchorNode.click();
-      downloadAnchorNode.remove();
-
-    } catch (error) {
-      console.error("Failed to export addresses as CSV:", error);
-    } finally {
-      setLoading(prev => ({ ...prev, exportCSV: false }));
-    }
-  };
-
-  const handleImportAddresses = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     try {
-      setLoading(prev => ({ ...prev, import: true }));
       const text = await file.text();
-
-      const result = await duckService.importAddresses(text);
-
-      if (result.success) {
-        setImportResult(`Successfully imported ${result.count} addresses`);
-      } else {
-        setImportResult(`Import failed: ${result.error || 'Unknown error'}`);
-      }
+      await processImport(text);
     } catch (error) {
       setImportResult("Import failed, invalid file");
     } finally {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      setLoading(prev => ({ ...prev, import: false }));
     }
   };
 
   const handleImportClick = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
+    }
+  };
+
+  const processImport = async (text: string) => {
+    try {
+      const parsed = JSON.parse(text);
+
+      if (parsed.type === 'qwacky_backup') {
+        if (parsed.session) {
+          setPendingImportData(text);
+          setShowImportConfirm(true);
+          return;
+        }
+
+        setLoading(prev => ({ ...prev, import: true }));
+        const result = await duckService.importBackup(text);
+        if (result.success && result.summary) {
+          setBackupSummary(result.summary);
+        } else {
+          setImportResult(`Import failed: ${result.error || 'Unknown error'}`);
+        }
+        setLoading(prev => ({ ...prev, import: false }));
+        return;
+      }
+
+      if (parsed.addresses && Array.isArray(parsed.addresses)) {
+        setLoading(prev => ({ ...prev, import: true }));
+        const result = await duckService.importAddresses(text);
+        if (result.success) {
+          setImportResult(`Successfully imported ${result.count} addresses`);
+        } else {
+          setImportResult(`Import failed: ${result.error || 'Unknown error'}`);
+        }
+        setLoading(prev => ({ ...prev, import: false }));
+        return;
+      }
+
+      setImportResult("Unrecognized file format");
+    } catch {
+      setImportResult("Import failed, invalid file");
+    }
+  };
+
+  const handleImportConfirmed = async () => {
+    setShowImportConfirm(false);
+    if (!pendingImportData) return;
+
+    try {
+      setLoading(prev => ({ ...prev, import: true }));
+      const result = await duckService.importBackup(pendingImportData);
+
+      if (result.success && result.summary) {
+        setBackupSummary(result.summary);
+      } else if (!result.success) {
+        setImportResult(`Import failed: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      setImportResult("Import failed");
+    } finally {
+      setPendingImportData(null);
+      setLoading(prev => ({ ...prev, import: false }));
     }
   };
 
@@ -283,7 +398,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
     for (const item of items) {
       if (item.kind === 'file') {
         const file = item.getAsFile();
-        if (file?.name.match(/\.(json|csv)$/i)) {
+        if (file?.name.match(/\.json$/i)) {
           try {
             text = await file.text();
             break;
@@ -302,20 +417,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
       return;
     }
 
-    try {
-      setLoading(prev => ({ ...prev, import: true }));
-      const result = await duckService.importAddresses(text);
-
-      if (result.success) {
-        setImportResult(`Successfully imported ${result.count} addresses`);
-      } else {
-        setImportResult(`Import failed: ${result.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      setImportResult("Import failed, invalid data");
-    } finally {
-      setLoading(prev => ({ ...prev, import: false }));
-    }
+    await processImport(text);
   };
 
   useEffect(() => {
@@ -405,21 +507,12 @@ export const Settings = ({ onBack }: SettingsProps) => {
 
         <ExportButtonsContainer>
           <BackupButton
-            onClick={handleExportAddressesJSON}
-            disabled={loading.export}
+            onClick={handleExport}
+            disabled={loading.export || selectedAccounts.length === 0}
           >
             <MdDownload size={20} />
-            {loading.export ? 'Exporting...' : 'Export as JSON'}
+            {loading.export ? 'Exporting...' : 'Export Backup'}
           </BackupButton>
-          <BackupButton
-            onClick={handleExportAddressesCSV}
-            disabled={loading.exportCSV}
-          >
-            <MdDownload size={20} />
-            {loading.exportCSV ? 'Exporting...' : 'Export as CSV'}
-          </BackupButton>
-        </ExportButtonsContainer>
-        <BackupButtonsContainer>
           <BackupButton
             onClick={isFirefox ? undefined : handleImportClick}
             disabled={loading.import}
@@ -428,16 +521,64 @@ export const Settings = ({ onBack }: SettingsProps) => {
             {isFirefox ? (
               <>
                 <MdContentPaste size={20} />
-                {loading.import ? 'Importing...' : 'Press Ctrl+V to paste exported file'}
+                {loading.import ? 'Importing...' : 'Ctrl+V to import'}
               </>
             ) : (
               <>
                 <MdFileUpload size={20} />
-                {loading.import ? 'Importing...' : 'Import Addresses (JSON or CSV)'}
+                {loading.import ? 'Importing...' : 'Import Backup'}
               </>
             )}
           </BackupButton>
-        </BackupButtonsContainer>
+        </ExportButtonsContainer>
+
+        <ExportOptionsContainer>
+          <ExportOptionsTitle>Export Options</ExportOptionsTitle>
+
+          {accounts.length > 1 && (
+            <DropdownWrapper ref={dropdownRef}>
+              <DropdownTrigger
+                type="button"
+                onClick={() => setAccountDropdownOpen(prev => !prev)}
+                data-open={accountDropdownOpen}
+              >
+                {getDropdownLabel()}
+                <MdKeyboardArrowDown size={20} />
+              </DropdownTrigger>
+              {accountDropdownOpen && (
+                <DropdownMenu>
+                  {accounts.map(account => (
+                    <DropdownItem key={account.username}>
+                      <input
+                        type="checkbox"
+                        checked={selectedAccounts.includes(account.username)}
+                        onChange={() => toggleAccount(account.username)}
+                      />
+                      {account.username}@duck.com
+                      {account.username === currentAccount && (
+                        <ExportOptionHint>(current)</ExportOptionHint>
+                      )}
+                    </DropdownItem>
+                  ))}
+                </DropdownMenu>
+              )}
+            </DropdownWrapper>
+          )}
+
+          <ExportOptionRow>
+            <SyncToggleSwitch>
+              <SyncToggleInput
+                type="checkbox"
+                checked={includeSession}
+                onChange={(e) => setIncludeSession(e.target.checked)}
+              />
+              <SyncToggleSlider />
+            </SyncToggleSwitch>
+            Include session
+            <ExportOptionHint>(login data & settings)</ExportOptionHint>
+          </ExportOptionRow>
+        </ExportOptionsContainer>
+
         {importResult && (
           <div style={{ marginTop: '16px', fontSize: '14px' }}>
             {importResult}
@@ -446,10 +587,52 @@ export const Settings = ({ onBack }: SettingsProps) => {
         <HiddenFileInput
           type="file"
           ref={fileInputRef}
-          accept=".json,.csv"
-          onChange={handleImportAddresses}
+          accept=".json"
+          onChange={handleImportFile}
         />
       </Section>
+
+      <ConfirmDialog
+        isOpen={showExportWarning}
+        variant="warning"
+        title="Security Warning"
+        message="The exported file will contain your access token and login credentials. Keep this file secure and do not share it. Anyone with this file can access your DuckDuckGo Email account."
+        confirmLabel="Export Anyway"
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          setShowExportWarning(false);
+          doExport();
+        }}
+        onCancel={() => setShowExportWarning(false)}
+      />
+
+      <ConfirmDialog
+        isOpen={showImportConfirm}
+        variant="warning"
+        title="Import Backup"
+        message="This backup contains session data. Importing it will add the accounts and their data to your extension. Are you sure?"
+        confirmLabel="Import"
+        cancelLabel="Cancel"
+        onConfirm={handleImportConfirmed}
+        onCancel={() => {
+          setShowImportConfirm(false);
+          setPendingImportData(null);
+        }}
+      />
+
+      <ConfirmDialog
+        isOpen={backupSummary !== null}
+        variant="info"
+        title={backupSummary?.action === 'export' ? 'Export Complete' : 'Import Complete'}
+        message={backupSummary ? buildSummaryMessage(backupSummary) : ''}
+        confirmLabel="Close"
+        singleButton
+        onConfirm={() => {
+          const needsReload = backupSummary?.action === 'import' && backupSummary?.includesSession;
+          setBackupSummary(null);
+          if (needsReload) window.location.reload();
+        }}
+      />
     </SettingsContainer>
   );
 };

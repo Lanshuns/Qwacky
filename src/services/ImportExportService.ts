@@ -1,4 +1,5 @@
 import { StorageService } from './StorageService';
+import { QwackyBackup, BackupSummary } from '../types';
 
 interface Address {
   value: string;
@@ -14,61 +15,6 @@ export class ImportExportService {
     this.storage = new StorageService();
   }
 
-  async exportAddresses(): Promise<string> {
-    try {
-      const userData = await this.storage.getUserData();
-      if (!userData || !userData.user || !userData.user.username) {
-        throw new Error('User data not found');
-      }
-      
-      const username = userData.user.username;
-      const addresses = await this.storage.getAddresses();
-
-      const exportData = {
-        version: '1.0',
-        timestamp: Date.now(),
-        account: `${username}@duck.com`,
-        addresses: addresses.map((addr: Address) => ({
-          value: `${addr.value}@duck.com`,
-          timestamp: addr.timestamp,
-          notes: addr.notes || ''
-        }))
-      };
-      
-      return JSON.stringify(exportData, null, 2);
-    } catch (error) {
-      console.error('Error exporting addresses:', error);
-      throw new Error('Failed to export addresses');
-    }
-  }
-
-  async exportAddressesCSV(): Promise<string> {
-    try {
-      const userData = await this.storage.getUserData();
-      if (!userData || !userData.user || !userData.user.username) {
-        throw new Error('User data not found');
-      }
-      
-      const username = userData.user.username;
-      const addresses = await this.storage.getAddresses();
-
-      let csv = `# Export for account: ${username}@duck.com\n`;
-      csv += 'Address,Timestamp,Notes\n';
-
-      addresses.forEach((addr: Address) => {
-        const timestamp = addr.timestamp;
-
-        const notes = addr.notes ? `"${addr.notes.replace(/"/g, '""')}"` : '';
-        csv += `${addr.value}@duck.com,${timestamp},${notes}\n`;
-      });
-      
-      return csv;
-    } catch (error) {
-      console.error('Error exporting addresses to CSV:', error);
-      throw new Error('Failed to export addresses to CSV');
-    }
-  }
-
   async importAddresses(data: string): Promise<{ success: boolean, count: number, error?: string }> {
     try {
       if (!data || typeof data !== 'string' || data.trim() === '') {
@@ -78,7 +24,6 @@ export class ImportExportService {
       let importedAddresses = [];
 
       try {
-
         const importData = JSON.parse(data);
 
         if (importData.addresses && Array.isArray(importData.addresses)) {
@@ -86,100 +31,19 @@ export class ImportExportService {
             if (!addr.value) {
               return null;
             }
-            
-            return { 
-              ...addr, 
+
+            return {
+              ...addr,
               value: addr.value.includes('@duck.com') ? addr.value.split('@')[0] : addr.value,
               timestamp: addr.timestamp || Date.now(),
               notes: addr.notes || ''
             };
           }).filter(Boolean);
         } else {
-          throw new Error('Invalid JSON format: missing or invalid addresses array');
+          return { success: false, count: 0, error: 'Invalid format: missing addresses array' };
         }
-      } catch (jsonError) {
-        try {
-          const lines = data.split('\n');
-          if (lines.length <= 1) {
-            throw new Error('CSV file must contain at least a header row and one data row');
-          }
-
-          let headerIndex = -1;
-          for (let i = 0; i < lines.length; i++) {
-            if (lines[i].trim().startsWith('#')) continue;
-            if (lines[i].includes('Address') && (lines[i].includes('Created Date') || lines[i].includes('Timestamp'))) {
-              headerIndex = i;
-              break;
-            }
-          }
-          
-          if (headerIndex === -1) {
-            throw new Error('Could not find valid CSV header row with Address and Timestamp columns');
-          }
-          
-          for (let i = headerIndex + 1; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
-
-            let parts = [];
-            let inQuotes = false;
-            let currentPart = '';
-            
-            for (let j = 0; j < line.length; j++) {
-              const char = line[j];
-              const nextChar = j < line.length - 1 ? line[j + 1] : '';
-              
-              if (char === '"') {
-                if (inQuotes && nextChar === '"') {
-                  currentPart += '"';
-                  j++;
-                } else {
-                  inQuotes = !inQuotes;
-                }
-              } else if (char === ',' && !inQuotes) {
-                parts.push(currentPart);
-                currentPart = '';
-              } else {
-                currentPart += char;
-              }
-            }
-            
-            parts.push(currentPart);
-            
-            if (parts.length >= 1) {
-              const address = parts[0].trim();
-              if (address) {
-                const value = address.includes('@duck.com') 
-                  ? address.split('@')[0] 
-                  : address;
-
-                let timestamp = Date.now();
-
-                if (parts.length > 1 && parts[1]) {
-                  const timestampStr = parts[1].trim();
-
-                  if (/^\d+$/.test(timestampStr)) {
-                    timestamp = parseInt(timestampStr, 10);
-                  } else {
-                    const parsedDate = new Date(timestampStr).getTime();
-                    if (!isNaN(parsedDate)) {
-                      timestamp = parsedDate;
-                    }
-                  }
-                }
-                const notes = parts.length > 2 ? parts[2].replace(/^"|"$/g, '') : '';
-                
-                importedAddresses.push({ value, timestamp, notes });
-              }
-            }
-          }
-          
-          if (importedAddresses.length === 0) {
-            throw new Error('No valid addresses found in the CSV file');
-          }
-        } catch (csvError: unknown) {
-          throw new Error(`CSV parsing error: ${csvError instanceof Error ? csvError.message : 'Invalid CSV format'}`);
-        }
+      } catch {
+        return { success: false, count: 0, error: 'Invalid JSON format' };
       }
 
       const userData = await this.storage.getUserData();
@@ -233,9 +97,322 @@ export class ImportExportService {
       }
     } catch (error) {
       console.error('Error importing addresses:', error);
-      return { 
-        success: false, 
-        count: 0, 
+      return {
+        success: false,
+        count: 0,
+        error: `Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
+  }
+
+  async exportBackup(selectedAccounts: string[], includeSession: boolean): Promise<{ data: string; summary: BackupSummary }> {
+    try {
+      const allAddresses: Array<{ value: string; timestamp: number; notes?: string }> = [];
+      const allReverseAliases: Array<{ recipientEmail: string; alias: string; timestamp: number; notes?: string }> = [];
+      const accountStats: BackupSummary['accounts'] = [];
+
+      for (const username of selectedAccounts) {
+        const addrKey = `addresses_${username}`;
+        const aliasKey = `reverse_aliases_${username}`;
+        const result = await chrome.storage.local.get([addrKey, aliasKey]);
+
+        const addresses: Address[] = result[addrKey] || [];
+        const reverseAliases = result[aliasKey] || [];
+
+        accountStats.push({
+          username,
+          addresses: addresses.length,
+          reverseAliases: reverseAliases.length
+        });
+
+        allAddresses.push(...addresses.map((addr: Address) => ({
+          value: `${addr.value}@duck.com`,
+          timestamp: addr.timestamp,
+          notes: addr.notes || ''
+        })));
+
+        allReverseAliases.push(...reverseAliases.map((alias: any) => ({
+          recipientEmail: alias.recipientEmail,
+          alias: alias.alias,
+          timestamp: alias.timestamp,
+          notes: alias.notes || ''
+        })));
+      }
+
+      const exportData: QwackyBackup = {
+        version: '1.0',
+        type: 'qwacky_backup',
+        timestamp: Date.now(),
+        account: selectedAccounts.map(u => `${u}@duck.com`).join(', '),
+        addresses: allAddresses,
+        reverseAliases: allReverseAliases
+      };
+
+      if (includeSession) {
+        const storageResult = await chrome.storage.local.get([
+          'accounts', 'currentAccount',
+          'hide_user_info', 'hide_generated_addresses', 'hide_reverse_aliases',
+          'contextMenuEnabled', 'syncEnabled'
+        ]);
+
+        const allStoredAccounts: Array<{ userData: any; username: string; lastUsed: number }> = storageResult.accounts || [];
+        const filteredAccounts = allStoredAccounts.filter(a => selectedAccounts.includes(a.username));
+        const perAccountData: Record<string, { addresses: any[]; reverseAliases: any[] }> = {};
+
+        for (const username of selectedAccounts) {
+          const addrKey = `addresses_${username}`;
+          const aliasKey = `reverse_aliases_${username}`;
+          const accountResult = await chrome.storage.local.get([addrKey, aliasKey]);
+
+          perAccountData[username] = {
+            addresses: accountResult[addrKey] || [],
+            reverseAliases: accountResult[aliasKey] || []
+          };
+        }
+
+        const themeMode = localStorage.getItem('themeMode');
+
+        exportData.session = {
+          currentAccount: storageResult.currentAccount || '',
+          accounts: filteredAccounts,
+          perAccountData,
+          settings: {
+            hideUserInfo: storageResult.hide_user_info || false,
+            hideGeneratedAddresses: storageResult.hide_generated_addresses || false,
+            hideReverseAliases: storageResult.hide_reverse_aliases || false,
+            contextMenuEnabled: storageResult.contextMenuEnabled || false,
+            syncEnabled: storageResult.syncEnabled || false,
+            themeMode: themeMode ? JSON.parse(themeMode) : 'system'
+          }
+        };
+      }
+
+      const summary: BackupSummary = {
+        action: 'export',
+        accounts: accountStats,
+        totalAddresses: allAddresses.length,
+        totalReverseAliases: allReverseAliases.length,
+        includesSession: includeSession
+      };
+
+      return { data: JSON.stringify(exportData, null, 2), summary };
+    } catch (error) {
+      console.error('Error exporting backup:', error);
+      throw new Error('Failed to export backup');
+    }
+  }
+
+  async importBackup(data: string): Promise<{ success: boolean; hasSession: boolean; summary?: BackupSummary; error?: string }> {
+    try {
+      if (!data || typeof data !== 'string' || data.trim() === '') {
+        return { success: false, hasSession: false, error: 'Import data is empty or invalid' };
+      }
+
+      let backupData: QwackyBackup;
+      try {
+        backupData = JSON.parse(data);
+      } catch {
+        return { success: false, hasSession: false, error: 'Invalid JSON format' };
+      }
+
+      if (backupData.type !== 'qwacky_backup') {
+        return { success: false, hasSession: false, error: 'Not a valid Qwacky backup file' };
+      }
+
+      if (backupData.session) {
+        const session = backupData.session;
+
+        const existingStorage = await chrome.storage.local.get(['accounts', 'currentAccount', 'user_data', 'access_token']);
+        const existingAccounts: any[] = existingStorage.accounts || [];
+
+        const mergedAccounts = [...existingAccounts];
+        for (const importedAccount of session.accounts) {
+          const exists = mergedAccounts.find(a => a.username === importedAccount.username);
+          if (!exists) {
+            mergedAccounts.push(importedAccount);
+          }
+        }
+
+        const accountStats: BackupSummary['accounts'] = [];
+        let totalNewAddresses = 0;
+        let totalNewAliases = 0;
+        let totalSkippedAddresses = 0;
+        let totalSkippedAliases = 0;
+
+        for (const [username, accountData] of Object.entries(session.perAccountData || {})) {
+          const importAddresses = accountData.addresses || [];
+          const importAliases = accountData.reverseAliases || [];
+
+          const existingAddrResult = await chrome.storage.local.get(`addresses_${username}`);
+          const existingAddresses: any[] = existingAddrResult[`addresses_${username}`] || [];
+          const existingAddrMap = new Map(existingAddresses.map(a => [a.value, true]));
+          const newAddresses = importAddresses.filter(a => !existingAddrMap.has(a.value));
+          await chrome.storage.local.set({
+            [`addresses_${username}`]: [...newAddresses, ...existingAddresses]
+          });
+
+          const existingAliasResult = await chrome.storage.local.get(`reverse_aliases_${username}`);
+          const existingAliases: any[] = existingAliasResult[`reverse_aliases_${username}`] || [];
+          const existingAliasMap = new Map(existingAliases.map(a => [a.recipientEmail, true]));
+          const newAliases = importAliases.filter(a => !existingAliasMap.has(a.recipientEmail));
+          await chrome.storage.local.set({
+            [`reverse_aliases_${username}`]: [...newAliases, ...existingAliases]
+          });
+
+          accountStats.push({
+            username,
+            addresses: newAddresses.length,
+            reverseAliases: newAliases.length
+          });
+          totalNewAddresses += newAddresses.length;
+          totalNewAliases += newAliases.length;
+          totalSkippedAddresses += importAddresses.length - newAddresses.length;
+          totalSkippedAliases += importAliases.length - newAliases.length;
+        }
+
+        const alreadyLoggedIn = existingStorage.user_data && existingStorage.access_token;
+
+        if (session.settings && !alreadyLoggedIn) {
+          await chrome.storage.local.set({
+            hide_user_info: session.settings.hideUserInfo || false,
+            hide_generated_addresses: session.settings.hideGeneratedAddresses || false,
+            hide_reverse_aliases: session.settings.hideReverseAliases || false,
+            contextMenuEnabled: session.settings.contextMenuEnabled || false,
+            syncEnabled: session.settings.syncEnabled || false
+          });
+        }
+
+        const allAddresses: any[] = [];
+        for (const account of mergedAccounts) {
+          const addrResult = await chrome.storage.local.get(`addresses_${account.username}`);
+          allAddresses.push(...(addrResult[`addresses_${account.username}`] || []));
+        }
+
+        if (alreadyLoggedIn) {
+          await chrome.storage.local.set({
+            accounts: mergedAccounts,
+            generated_addresses: allAddresses
+          });
+        } else {
+          const currentAcct = session.accounts.find(a => a.username === session.currentAccount);
+          if (!currentAcct) {
+            return { success: false, hasSession: false, error: 'Current account not found in session data' };
+          }
+          await chrome.storage.local.set({
+            user_data: currentAcct.userData,
+            access_token: currentAcct.userData.user.access_token,
+            accounts: mergedAccounts,
+            currentAccount: session.currentAccount,
+            generated_addresses: allAddresses,
+            loginState: 'dashboard'
+          });
+        }
+
+        if (session.settings?.themeMode) {
+          localStorage.setItem('themeMode', JSON.stringify(session.settings.themeMode));
+        }
+
+        const newAccountCount = session.accounts.filter(
+          a => !existingAccounts.find(e => e.username === a.username)
+        ).length;
+
+        return {
+          success: true,
+          hasSession: true,
+          summary: {
+            action: 'import',
+            accounts: accountStats,
+            totalAddresses: totalNewAddresses,
+            totalReverseAliases: totalNewAliases,
+            includesSession: true,
+            newAddresses: totalNewAddresses,
+            newReverseAliases: totalNewAliases,
+            newAccounts: newAccountCount,
+            skippedAddresses: totalSkippedAddresses,
+            skippedReverseAliases: totalSkippedAliases
+          }
+        };
+      }
+
+      const userData = await this.storage.getUserData();
+      if (!userData || !userData.user || !userData.user.username) {
+        return { success: false, hasSession: false, error: 'User data not found. Please log in first.' };
+      }
+      const username = userData.user.username;
+
+      let newAddressCount = 0;
+      if (backupData.addresses && backupData.addresses.length > 0) {
+        const currentAddresses = await this.storage.getAddresses();
+        const existingMap = new Map(currentAddresses.map((a: Address) => [a.value, true]));
+
+        const newAddresses = backupData.addresses
+          .map(addr => ({
+            value: addr.value.includes('@duck.com') ? addr.value.split('@')[0] : addr.value,
+            timestamp: addr.timestamp || Date.now(),
+            notes: addr.notes || '',
+            username
+          }))
+          .filter(addr => addr.value && !existingMap.has(addr.value));
+
+        if (newAddresses.length > 0) {
+          const merged = [...newAddresses, ...currentAddresses];
+          await chrome.storage.local.set({ [`addresses_${username}`]: merged });
+
+          const globalResult = await chrome.storage.local.get('generated_addresses');
+          const globalAddresses = globalResult.generated_addresses || [];
+          await chrome.storage.local.set({ generated_addresses: [...newAddresses, ...globalAddresses] });
+
+          newAddressCount = newAddresses.length;
+        }
+      }
+
+      let newAliasCount = 0;
+      if (backupData.reverseAliases && backupData.reverseAliases.length > 0) {
+        const currentAliases = await this.storage.getReverseAliases();
+        const existingMap = new Map(currentAliases.map(a => [a.recipientEmail, true]));
+
+        const newAliases = backupData.reverseAliases
+          .filter(a => a.recipientEmail && !existingMap.has(a.recipientEmail))
+          .map(a => ({
+            recipientEmail: a.recipientEmail,
+            alias: a.alias,
+            timestamp: a.timestamp || Date.now(),
+            lastModified: Date.now(),
+            notes: a.notes || '',
+            username
+          }));
+
+        if (newAliases.length > 0) {
+          const merged = [...newAliases, ...currentAliases];
+          await chrome.storage.local.set({ [`reverse_aliases_${username}`]: merged });
+          newAliasCount = newAliases.length;
+        }
+      }
+
+      const totalInAddresses = backupData.addresses?.length || 0;
+      const totalInAliases = backupData.reverseAliases?.length || 0;
+
+      return {
+        success: true,
+        hasSession: false,
+        summary: {
+          action: 'import',
+          accounts: [{ username, addresses: newAddressCount, reverseAliases: newAliasCount }],
+          totalAddresses: newAddressCount,
+          totalReverseAliases: newAliasCount,
+          includesSession: false,
+          newAddresses: newAddressCount,
+          newReverseAliases: newAliasCount,
+          newAccounts: 0,
+          skippedAddresses: totalInAddresses - newAddressCount,
+          skippedReverseAliases: totalInAliases - newAliasCount
+        }
+      };
+    } catch (error) {
+      console.error('Error importing backup:', error);
+      return {
+        success: false,
+        hasSession: false,
         error: `Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }

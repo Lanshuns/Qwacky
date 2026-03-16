@@ -577,6 +577,110 @@ export const HiddenFileInput = styled.input`
   display: none;
 `
 
+export const ExportOptionsContainer = styled.div`
+  background-color: ${props => props.theme.surface};
+  border: 1px solid ${props => props.theme.border};
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+`
+
+export const ExportOptionsTitle = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${props => props.theme.textSecondary};
+  margin-bottom: 10px;
+`
+
+export const ExportOptionRow = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 0;
+
+  input[type="checkbox"] {
+    accent-color: ${props => props.theme.primary};
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  }
+`
+
+export const ExportOptionHint = styled.span`
+  font-size: 11px;
+  color: ${props => props.theme.textSecondary};
+  margin-left: 2px;
+`
+
+export const DropdownWrapper = styled.div`
+  position: relative;
+  margin-bottom: 10px;
+`
+
+export const DropdownTrigger = styled.button`
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  font-size: 14px;
+  border: 1px solid ${props => props.theme.border};
+  border-radius: 6px;
+  background-color: ${props => props.theme.background};
+  color: ${props => props.theme.text};
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s ease;
+
+  &:hover, &:focus {
+    border-color: ${props => props.theme.primary};
+  }
+
+  svg {
+    color: ${props => props.theme.textSecondary};
+    transition: transform 0.2s ease;
+  }
+
+  &[data-open="true"] svg {
+    transform: rotate(180deg);
+  }
+`
+
+export const DropdownMenu = styled.div`
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background-color: ${props => props.theme.surface};
+  border: 1px solid ${props => props.theme.border};
+  border-radius: 6px;
+  padding: 4px 0;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+`
+
+export const DropdownItem = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+
+  &:hover {
+    background-color: ${props => props.theme.hover};
+  }
+
+  input[type="checkbox"] {
+    accent-color: ${props => props.theme.primary};
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+  }
+`
 
 export const ChangelogContainer = styled.div`
   padding: 16px 20px;

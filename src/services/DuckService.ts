@@ -162,24 +162,6 @@ export class DuckService {
     }
   }
 
-  async exportAddresses(): Promise<string> {
-    try {
-      return await this.importExport.exportAddresses()
-    } catch (error: unknown) {
-      console.error('Error exporting addresses:', error)
-      throw new Error(error instanceof Error ? error.message : 'Failed to export addresses')
-    }
-  }
-
-  async exportAddressesCSV(): Promise<string> {
-    try {
-      return await this.importExport.exportAddressesCSV()
-    } catch (error: unknown) {
-      console.error('Error exporting addresses to CSV:', error)
-      throw new Error(error instanceof Error ? error.message : 'Failed to export addresses to CSV')
-    }
-  }
-
   async importAddresses(data: string): Promise<{ success: boolean, count: number, error?: string }> {
     try {
       return await this.importExport.importAddresses(data)
@@ -239,6 +221,28 @@ export class DuckService {
     } catch (error: unknown) {
       console.error('Error clearing reverse aliases:', error)
       return false
+    }
+  }
+
+  async exportBackup(selectedAccounts: string[], includeSession: boolean) {
+    try {
+      return await this.importExport.exportBackup(selectedAccounts, includeSession)
+    } catch (error: unknown) {
+      console.error('Error exporting backup:', error)
+      throw new Error(error instanceof Error ? error.message : 'Failed to export backup')
+    }
+  }
+
+  async importBackup(data: string) {
+    try {
+      return await this.importExport.importBackup(data)
+    } catch (error: unknown) {
+      console.error('Error importing backup:', error)
+      return {
+        success: false,
+        hasSession: false,
+        error: error instanceof Error ? error.message : 'Unknown error importing backup'
+      }
     }
   }
 }
