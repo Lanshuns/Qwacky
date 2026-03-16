@@ -351,8 +351,13 @@ export class StorageService {
       const result = await chrome.storage.local.get(key);
       const existing: ReverseAlias[] = result[key] || [];
 
-      const duplicate = existing.find(a => a.recipientEmail === recipientEmail);
-      if (duplicate) return;
+      const duplicateIndex = existing.findIndex(a => a.recipientEmail === recipientEmail);
+      if (duplicateIndex !== -1) {
+        const updated = { ...existing[duplicateIndex], alias, timestamp: Date.now(), lastModified: Date.now() };
+        const filtered = existing.filter((_, i) => i !== duplicateIndex);
+        await chrome.storage.local.set({ [key]: [updated, ...filtered] });
+        return;
+      }
 
       const newAlias: ReverseAlias = {
         recipientEmail,

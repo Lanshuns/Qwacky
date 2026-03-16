@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { MdInfo, MdOpenInNew, MdKeyboardArrowDown, MdClose, MdCheck } from "react-icons/md";
 import { useApp } from "../context/AppContext";
 import { DuckService } from "../services/DuckService";
 import { ReverseAlias } from "../types";
@@ -6,6 +7,7 @@ import { useNotification } from "../components/Notification";
 
 import { ItemListSection, ListItem, ListConfig } from "../components/AddressListSection";
 import { DashboardTabs } from "../components/DashboardTabs";
+import { DialogOverlay } from "../styles/ui.styles";
 import {
   DashboardContainer,
   GenerateButton,
@@ -14,7 +16,16 @@ import {
   ReverseAliasInputRow,
   ReverseAliasInput,
   ReverseAliasConvertButton,
-  ReverseAliasResult,
+  InstructionsToggle,
+  LearnMoreLink,
+  SenderSelector,
+  PickerContainer,
+  PickerHeader,
+  PickerSearchInput,
+  PickerList,
+  PickerItem,
+  PickerItemText,
+  PickerItemLabel,
 } from "../styles/pages.styles";
 
 interface StoredAddress {
@@ -56,8 +67,11 @@ export const Dashboard = () => {
   const [autoEditAddress, setAutoEditAddress] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'generate' | 'send'>('generate');
   const [recipientEmail, setRecipientEmail] = useState("");
-  const [reverseAlias, setReverseAlias] = useState<string | null>(null);
   const [reverseAliases, setReverseAliases] = useState<ReverseAlias[]>([]);
+  const [showInstructions, setShowInstructions] = useState(false);
+  const [selectedSender, setSelectedSender] = useState<string | null>(null);
+  const [showAliasPicker, setShowAliasPicker] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState("");
   const duckService = new DuckService();
   const { showNotification, NotificationRenderer } = useNotification();
 
@@ -113,8 +127,6 @@ export const Dashboard = () => {
     });
   }, []);
 
-  // --- Generate tab handlers ---
-
   const generateNewAddress = async () => {
     setLoading(true);
     try {
@@ -160,29 +172,48 @@ export const Dashboard = () => {
     }
   };
 
-  // --- Send tab handlers ---
+  const effectiveSender = useMemo(() => {
+    if (selectedSender && addresses.some(a => a.value === selectedSender)) {
+      return selectedSender;
+    }
+    return null;
+  }, [selectedSender, addresses]);
+
+  const filteredPickerAddresses = useMemo(() => {
+    if (!pickerSearch.trim()) return addresses;
+    const q = pickerSearch.toLowerCase();
+    return addresses.filter(a =>
+      a.value.toLowerCase().includes(q) ||
+      (a.notes && a.notes.toLowerCase().includes(q))
+    );
+  }, [addresses, pickerSearch]);
 
   const handleConvertReverseAlias = async (event?: React.MouseEvent) => {
     const email = recipientEmail.trim();
     if (!email || !email.includes("@") || !email.includes(".")) return;
-    const username = userData!.user.username;
-    const alias = email.replace("@", "_at_") + "_" + username + "@duck.com";
+    const senderLocal = effectiveSender || userData!.user.username;
+    const alias = email.replace("@", "_at_") + "_" + senderLocal + "@duck.com";
 
-    const existing = reverseAliases.find(a => a.recipientEmail === email);
-    if (!existing) {
-      await duckService.saveReverseAlias(email, alias);
-      setReverseAliases(prev => [{
+    await duckService.saveReverseAlias(email, alias);
+
+    setReverseAliases(prev => {
+      const existingIndex = prev.findIndex(a => a.recipientEmail === email);
+      if (existingIndex !== -1) {
+        const item = { ...prev[existingIndex], alias, timestamp: Date.now() };
+        return [item, ...prev.filter((_, i) => i !== existingIndex)];
+      }
+      return [{
         recipientEmail: email,
         alias,
         timestamp: Date.now(),
         notes: '',
-        username
-      }, ...prev]);
-    }
+        username: senderLocal
+      }, ...prev];
+    });
 
-    setReverseAlias(alias);
     navigator.clipboard.writeText(alias);
     showNotification("Copied!", event?.nativeEvent);
+    setRecipientEmail("");
   };
 
   const handleUpdateReverseAliasNotes = async (key: string, notes: string) => {
@@ -207,8 +238,6 @@ export const Dashboard = () => {
       setReverseAliases([]);
     }
   };
-
-  // --- Map data to generic ListItem format ---
 
   const addressItems: ListItem[] = useMemo(() =>
     addresses.map(addr => ({
@@ -263,20 +292,42 @@ export const Dashboard = () => {
       {activeTab === 'send' && (
         <>
           <ReverseAliasSection>
-            <ReverseAliasSteps>
-              <li>Enter recipient's email & click <strong>Convert</strong></li>
-              <li>Paste the result as <strong>To</strong> in your email client</li>
-              <li>Send from the email linked to your DDG account</li>
-            </ReverseAliasSteps>
+            <InstructionsToggle onClick={() => setShowInstructions(prev => !prev)}>
+              <MdInfo size={14} />
+              {showInstructions ? 'Hide' : 'How to use'}
+            </InstructionsToggle>
+
+            {showInstructions && (
+              <>
+                <ReverseAliasSteps>
+                  <li>Enter recipient's email & click <strong>Convert</strong></li>
+                  <li>Paste the result as <strong>To</strong> in your email client</li>
+                  <li>Send from the email linked to your DDG account</li>
+                </ReverseAliasSteps>
+                <LearnMoreLink
+                  href="https://duckduckgo.com/duckduckgo-help-pages/email-protection/duck-addresses/how-do-i-compose-a-new-email"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Learn more <MdOpenInNew size={12} />
+                </LearnMoreLink>
+              </>
+            )}
+
+            {addresses.length > 0 && (
+              <SenderSelector onClick={() => { setShowAliasPicker(true); setPickerSearch(''); }}>
+                <span>From:</span>
+                <span>{(effectiveSender || userData!.user.username) + '@duck.com'}</span>
+                <MdKeyboardArrowDown size={18} />
+              </SenderSelector>
+            )}
+
             <ReverseAliasInputRow>
               <ReverseAliasInput
                 type="email"
                 placeholder="someone@email.com"
                 value={recipientEmail}
-                onChange={(e) => {
-                  setRecipientEmail(e.target.value);
-                  setReverseAlias(null);
-                }}
+                onChange={(e) => setRecipientEmail(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleConvertReverseAlias(e as unknown as React.MouseEvent);
                 }}
@@ -288,18 +339,51 @@ export const Dashboard = () => {
                 Convert
               </ReverseAliasConvertButton>
             </ReverseAliasInputRow>
-            {reverseAlias && (
-              <ReverseAliasResult
-                onClick={(e) => {
-                  navigator.clipboard.writeText(reverseAlias);
-                  showNotification("Copied!", e.nativeEvent);
-                }}
-                title="Click to copy"
-              >
-                {reverseAlias}
-              </ReverseAliasResult>
-            )}
           </ReverseAliasSection>
+
+          {showAliasPicker && (
+            <DialogOverlay onClick={(e) => { if (e.target === e.currentTarget) { setShowAliasPicker(false); setPickerSearch(''); } }}>
+              <PickerContainer>
+                <PickerHeader>
+                  <h3>Send from</h3>
+                  <button onClick={() => { setShowAliasPicker(false); setPickerSearch(''); }}>
+                    <MdClose size={20} />
+                  </button>
+                </PickerHeader>
+                <PickerSearchInput
+                  placeholder="Search addresses..."
+                  value={pickerSearch}
+                  onChange={(e) => setPickerSearch(e.target.value)}
+                  autoFocus
+                />
+                <PickerList>
+                  <PickerItem
+                    active={!effectiveSender}
+                    onClick={() => { setSelectedSender(null); setShowAliasPicker(false); setPickerSearch(''); }}
+                  >
+                    <PickerItemText>
+                      {userData!.user.username}@duck.com
+                      {!effectiveSender && <MdCheck size={14} style={{ marginLeft: 6, verticalAlign: 'middle' }} />}
+                    </PickerItemText>
+                    <PickerItemLabel>Personal address</PickerItemLabel>
+                  </PickerItem>
+                  {filteredPickerAddresses.map(addr => (
+                    <PickerItem
+                      key={addr.value}
+                      active={effectiveSender === addr.value}
+                      onClick={() => { setSelectedSender(addr.value); setShowAliasPicker(false); setPickerSearch(''); }}
+                    >
+                      <PickerItemText>
+                        {addr.value}@duck.com
+                        {effectiveSender === addr.value && <MdCheck size={14} style={{ marginLeft: 6, verticalAlign: 'middle' }} />}
+                      </PickerItemText>
+                      {addr.notes && <PickerItemLabel>{addr.notes}</PickerItemLabel>}
+                    </PickerItem>
+                  ))}
+                </PickerList>
+              </PickerContainer>
+            </DialogOverlay>
+          )}
           <ItemListSection
             items={reverseAliasItems}
             config={SEND_LIST_CONFIG}

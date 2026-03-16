@@ -154,7 +154,6 @@ export const ReverseAliasSteps = styled.ol`
 export const ReverseAliasInputRow = styled.div`
   display: flex;
   gap: 8px;
-  margin-bottom: 8px;
 `
 
 export const ReverseAliasInput = styled(BaseInput)`
@@ -185,20 +184,183 @@ export const ReverseAliasConvertButton = styled.button`
   }
 `
 
-export const ReverseAliasResult = styled.div`
-  padding: 10px 12px;
+export const InstructionsToggle = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: ${props => props.theme.primary};
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0;
+  margin-bottom: 10px;
+  transition: opacity 0.15s;
+
+  &:hover {
+    opacity: 0.8;
+  }
+`
+
+export const LearnMoreLink = styled.a`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: ${props => props.theme.primary};
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  margin-bottom: 12px;
+
+  &:hover {
+    text-decoration: underline;
+  }
+`
+
+export const SenderSelector = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  margin-bottom: 8px;
   background: ${props => props.theme.surface};
   border: 1px solid ${props => props.theme.border};
   border-radius: 8px;
-  font-size: 12px;
   color: ${props => props.theme.text};
-  word-break: break-all;
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.15s ease;
+
+  span:first-child {
+    color: ${props => props.theme.textTertiary};
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  span:nth-child(2) {
+    flex: 1;
+    text-align: left;
+    word-break: break-all;
+  }
+
+  svg {
+    color: ${props => props.theme.textTertiary};
+  }
 
   &:hover {
     border-color: ${props => props.theme.primary};
   }
+`
+
+export const PickerContainer = styled.div`
+  background: ${props => props.theme.surfaceElevated};
+  border-radius: 12px;
+  width: 320px;
+  max-height: 400px;
+  box-shadow: ${props => props.theme.shadowLg};
+  border: 1px solid ${props => props.theme.border};
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+`
+
+export const PickerHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 12px;
+
+  h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: ${props => props.theme.text};
+  }
+
+  button {
+    background: none;
+    border: none;
+    color: ${props => props.theme.textSecondary};
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: ${props => props.theme.primary}15;
+      color: ${props => props.theme.primary};
+    }
+  }
+`
+
+export const PickerSearchInput = styled.input`
+  margin: 0 16px 12px;
+  padding: 10px 12px;
+  border: 1px solid ${props => props.theme.border};
+  border-radius: 8px;
+  background: ${props => props.theme.surface};
+  color: ${props => props.theme.text};
+  font-size: 13px;
+  transition: all 0.15s ease;
+
+  &:focus {
+    outline: none;
+    border-color: ${props => props.theme.primary};
+  }
+
+  &::placeholder {
+    color: ${props => props.theme.textTertiary};
+  }
+`
+
+export const PickerList = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 8px 8px;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: ${props => props.theme.border};
+    border-radius: 3px;
+  }
+`
+
+export const PickerItem = styled.button<{ active?: boolean }>`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 10px 12px;
+  background: ${props => props.active ? props.theme.primary + '15' : 'transparent'};
+  border: 1px solid ${props => props.active ? props.theme.primary : 'transparent'};
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+  margin-bottom: 4px;
+
+  &:hover {
+    background: ${props => props.active ? props.theme.primary + '20' : props.theme.hover};
+  }
+`
+
+export const PickerItemText = styled.div`
+  font-size: 13px;
+  font-weight: 500;
+  color: ${props => props.theme.text};
+  word-break: break-all;
+`
+
+export const PickerItemLabel = styled.div`
+  font-size: 11px;
+  color: ${props => props.theme.textTertiary};
+  margin-top: 2px;
 `
 
 
