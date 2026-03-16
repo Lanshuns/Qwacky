@@ -32,6 +32,7 @@ interface StoredAddress {
   value: string;
   timestamp: number;
   notes?: string;
+  tags?: string[];
 }
 
 const GENERATE_LIST_CONFIG: ListConfig = {
@@ -165,6 +166,15 @@ export const Dashboard = () => {
     }
   };
 
+  const handleUpdateAddressTags = async (key: string, tags: string[]) => {
+    const success = await duckService.updateAddressTags(key, tags);
+    if (success) {
+      setAddresses(prev => prev.map(addr =>
+        addr.value === key ? { ...addr, tags } : addr
+      ));
+    }
+  };
+
   const handleClearAllAddresses = async () => {
     const success = await duckService.clearAllAddresses();
     if (success) {
@@ -232,12 +242,28 @@ export const Dashboard = () => {
     }
   };
 
+  const handleUpdateReverseAliasTags = async (key: string, tags: string[]) => {
+    const success = await duckService.updateReverseAliasTags(key, tags);
+    if (success) {
+      setReverseAliases(prev => prev.map(a =>
+        a.recipientEmail === key ? { ...a, tags } : a
+      ));
+    }
+  };
+
   const handleClearAllReverseAliases = async () => {
     const success = await duckService.clearAllReverseAliases();
     if (success) {
       setReverseAliases([]);
     }
   };
+
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    addresses.forEach(addr => (addr.tags || []).forEach(t => tagSet.add(t)));
+    reverseAliases.forEach(a => (a.tags || []).forEach(t => tagSet.add(t)));
+    return Array.from(tagSet).sort();
+  }, [addresses, reverseAliases]);
 
   const addressItems: ListItem[] = useMemo(() =>
     addresses.map(addr => ({
@@ -247,6 +273,7 @@ export const Dashboard = () => {
       copyLabel: `Copy ${addr.value}@duck.com`,
       timestamp: addr.timestamp,
       notes: addr.notes,
+      tags: addr.tags || [],
     })),
     [addresses]
   );
@@ -260,6 +287,7 @@ export const Dashboard = () => {
       copyLabel: `Copy reverse alias for ${a.recipientEmail}`,
       timestamp: a.timestamp,
       notes: a.notes,
+      tags: a.tags || [],
     })),
     [reverseAliases]
   );
@@ -285,6 +313,8 @@ export const Dashboard = () => {
             onClearAll={handleClearAllAddresses}
             autoEditKey={autoEditAddress}
             onAutoEditComplete={() => setAutoEditAddress(null)}
+            onUpdateTags={handleUpdateAddressTags}
+            allTags={allTags}
           />
         </>
       )}
@@ -392,6 +422,8 @@ export const Dashboard = () => {
             onUpdateNotes={handleUpdateReverseAliasNotes}
             onDeleteItem={handleDeleteReverseAlias}
             onClearAll={handleClearAllReverseAliases}
+            onUpdateTags={handleUpdateReverseAliasTags}
+            allTags={allTags}
           />
         </>
       )}

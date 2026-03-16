@@ -311,3 +311,188 @@ export const ItemSubtext = styled.div`
   margin-top: 2px;
   font-family: monospace;
 `
+
+export const TagFilterRow = styled.div`
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  align-items: center;
+
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: ${props => props.theme.border};
+    border-radius: 2px;
+  }
+`
+
+export const TagFilterChip = styled.button<{ active?: boolean }>`
+  padding: 4px 10px;
+  background: ${props => props.active ? props.theme.primary : props.theme.surface};
+  color: ${props => props.active ? 'white' : props.theme.textSecondary};
+  border: 1px solid ${props => props.active ? props.theme.primary : props.theme.border};
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: ${props => props.active ? props.theme.primary : props.theme.hover};
+    border-color: ${props => props.theme.primary};
+  }
+`
+
+export const GroupByButton = styled.button<{ active?: boolean }>`
+  padding: 10px 14px;
+  background: ${props => props.active ? props.theme.primary : props.theme.surface};
+  color: ${props => props.active ? 'white' : props.theme.text};
+  border: 1px solid ${props => props.active ? props.theme.primary : props.theme.border};
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: ${props => props.active ? props.theme.primary : props.theme.hover};
+    border-color: ${props => props.theme.primary};
+  }
+
+  svg {
+    font-size: 18px;
+  }
+`
+
+export const GroupHeader = styled.div<{ tagColor?: string }>`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  border-radius: 6px;
+  border-left: 3px solid ${props => props.tagColor || props.theme.primary};
+  margin-bottom: 4px;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: ${props => props.theme.hover};
+  }
+`
+
+export const GroupName = styled.span`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${props => props.theme.text};
+`
+
+export const GroupCount = styled.span`
+  font-size: 11px;
+  color: ${props => props.theme.textTertiary};
+  font-weight: 500;
+`
+
+export const TagChipContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 8px;
+`
+
+export const TagChip = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  background: ${props => props.theme.primary}18;
+  color: ${props => props.theme.primary};
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+`
+
+export const TagChipRemove = styled.button`
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+
+  &:hover {
+    opacity: 1;
+  }
+`
+
+export const TagInputContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  position: relative;
+`
+
+export const TagInput = styled.input`
+  padding: 3px 8px;
+  border: 1px solid ${props => props.theme.border};
+  border-radius: 6px;
+  background: ${props => props.theme.inputBackground};
+  color: ${props => props.theme.text};
+  font-size: 12px;
+  width: 120px;
+  transition: all 0.15s ease;
+
+  &:focus {
+    outline: none;
+    border-color: ${props => props.theme.primary};
+  }
+
+  &::placeholder {
+    color: ${props => props.theme.textTertiary};
+    font-size: 12px;
+  }
+`
+
+export const TagSuggestions = styled.div`
+  position: absolute;
+  top: 100%;
+  left: 8px;
+  background: ${props => props.theme.surface};
+  border: 1px solid ${props => props.theme.border};
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  max-height: 120px;
+  overflow-y: auto;
+  min-width: 120px;
+`
+
+export const TagSuggestionItem = styled.button`
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: none;
+  color: ${props => props.theme.text};
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s ease;
+
+  &:hover {
+    background: ${props => props.theme.hover};
+  }
+`

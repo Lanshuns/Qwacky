@@ -5,6 +5,7 @@ interface Address {
   value: string;
   timestamp: number;
   notes?: string;
+  tags?: string[];
   username?: string;
 }
 
@@ -128,14 +129,16 @@ export class ImportExportService {
         allAddresses.push(...addresses.map((addr: Address) => ({
           value: `${addr.value}@duck.com`,
           timestamp: addr.timestamp,
-          notes: addr.notes || ''
+          notes: addr.notes || '',
+          tags: addr.tags || []
         })));
 
         allReverseAliases.push(...reverseAliases.map((alias: any) => ({
           recipientEmail: alias.recipientEmail,
           alias: alias.alias,
           timestamp: alias.timestamp,
-          notes: alias.notes || ''
+          notes: alias.notes || '',
+          tags: alias.tags || []
         })));
       }
 
@@ -350,6 +353,7 @@ export class ImportExportService {
             value: addr.value.includes('@duck.com') ? addr.value.split('@')[0] : addr.value,
             timestamp: addr.timestamp || Date.now(),
             notes: addr.notes || '',
+            tags: addr.tags || [],
             username
           }))
           .filter(addr => addr.value && !existingMap.has(addr.value));
@@ -379,6 +383,7 @@ export class ImportExportService {
             timestamp: a.timestamp || Date.now(),
             lastModified: Date.now(),
             notes: a.notes || '',
+            tags: a.tags || [],
             username
           }));
 

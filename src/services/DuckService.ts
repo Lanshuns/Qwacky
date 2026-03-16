@@ -139,6 +139,20 @@ export class DuckService {
     }
   }
 
+  async updateAddressTags(addressValue: string, tags: string[]): Promise<boolean> {
+    try {
+      if (!addressValue) {
+        console.error('Cannot update tags: Address value is required')
+        return false
+      }
+
+      return await this.storage.updateAddressTags(addressValue, tags)
+    } catch (error: unknown) {
+      console.error('Error updating address tags:', error)
+      return false
+    }
+  }
+
   async deleteAddress(addressValue: string): Promise<boolean> {
     try {
       if (!addressValue) {
@@ -201,6 +215,16 @@ export class DuckService {
       return await this.storage.updateReverseAliasNotes(recipientEmail, notes)
     } catch (error: unknown) {
       console.error('Error updating reverse alias notes:', error)
+      return false
+    }
+  }
+
+  async updateReverseAliasTags(recipientEmail: string, tags: string[]): Promise<boolean> {
+    try {
+      if (!recipientEmail) return false
+      return await this.storage.updateReverseAliasTags(recipientEmail, tags)
+    } catch (error: unknown) {
+      console.error('Error updating reverse alias tags:', error)
       return false
     }
   }

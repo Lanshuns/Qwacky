@@ -6,6 +6,7 @@ interface Address {
   timestamp: number;
   lastModified?: number;
   notes?: string;
+  tags?: string[];
   username?: string;
 }
 
@@ -247,6 +248,51 @@ export class StorageService {
     }
   }
 
+  async updateAddressTags(addressValue: string, tags: string[]): Promise<boolean> {
+    try {
+      const username = await this.getCurrentUsername();
+      if (!username) {
+        return false;
+      }
+
+      const accountKey = `addresses_${username}`;
+      const accountResult = await chrome.storage.local.get(accountKey);
+      const accountAddresses = accountResult[accountKey] || [];
+
+      const updatedAccountAddresses = accountAddresses.map((addr: Address) => {
+        if (addr.value === addressValue) {
+          return { ...addr, tags, lastModified: Date.now() };
+        }
+        return addr;
+      });
+
+      await chrome.storage.local.set({ [accountKey]: updatedAccountAddresses });
+
+      const globalResult = await chrome.storage.local.get('generated_addresses');
+      const globalAddresses = globalResult.generated_addresses || [];
+
+      const updatedGlobalAddresses = globalAddresses.map((addr: Address) => {
+        if (addr.value === addressValue && addr.username === username) {
+          return { ...addr, tags, lastModified: Date.now() };
+        }
+        return addr;
+      });
+
+      await chrome.storage.local.set({ generated_addresses: updatedGlobalAddresses });
+
+      try {
+        await this.syncService.saveAddressesToSync(username, updatedAccountAddresses);
+      } catch (syncError) {
+        console.error('Sync error (non-fatal):', syncError);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error updating address tags:', error);
+      return false;
+    }
+  }
+
   async deleteAddress(addressValue: string): Promise<boolean> {
     try {
       const username = await this.getCurrentUsername();
@@ -407,6 +453,29 @@ export class StorageService {
       return true;
     } catch (error) {
       console.error('Error updating reverse alias notes:', error);
+      return false;
+    }
+  }
+
+  async updateReverseAliasTags(recipientEmail: string, tags: string[]): Promise<boolean> {
+    try {
+      const username = await this.getCurrentUsername();
+      if (!username) return false;
+
+      const key = `reverse_aliases_${username}`;
+      const result = await chrome.storage.local.get(key);
+      const aliases: ReverseAlias[] = result[key] || [];
+
+      const updated = aliases.map(a =>
+        a.recipientEmail === recipientEmail
+          ? { ...a, tags, lastModified: Date.now() }
+          : a
+      );
+
+      await chrome.storage.local.set({ [key]: updated });
+      return true;
+    } catch (error) {
+      console.error('Error updating reverse alias tags:', error);
       return false;
     }
   }

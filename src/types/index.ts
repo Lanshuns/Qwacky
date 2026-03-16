@@ -37,6 +37,7 @@ export interface ReverseAlias {
   timestamp: number;
   lastModified?: number;
   notes?: string;
+  tags?: string[];
   username: string;
 }
 
@@ -62,12 +63,14 @@ export interface QwackyBackup {
     value: string;
     timestamp: number;
     notes?: string;
+    tags?: string[];
   }>;
   reverseAliases: Array<{
     recipientEmail: string;
     alias: string;
     timestamp: number;
     notes?: string;
+    tags?: string[];
   }>;
   session?: {
     currentAccount: string;
