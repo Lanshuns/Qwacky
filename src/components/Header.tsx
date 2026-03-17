@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { MdLightMode, MdDarkMode, MdLogout, MdSettings, MdDevices, MdMenu, MdAccountCircle, MdPersonAdd, MdNewReleases, MdSwapHoriz, MdKeyboardArrowDown, MdEdit, MdCheck, MdClose, MdFavorite, MdInfoOutline, MdManageAccounts } from 'react-icons/md'
+import { MdLightMode, MdDarkMode, MdLogout, MdSettings, MdDevices, MdMenu, MdAccountCircle, MdPersonAdd, MdNewReleases, MdSwapHoriz, MdKeyboardArrowDown, MdEdit, MdCheck, MdClose, MdFavorite, MdInfoOutline, MdManageAccounts, MdOpenInNew } from 'react-icons/md'
 import { useApp, ThemeMode } from '../context/AppContext'
 import { ConfirmDialog } from './ConfirmDialog'
 import {
@@ -47,8 +47,15 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
   const themeDropdownRef = useRef<HTMLDivElement>(null)
   const menuDropdownRef = useRef<HTMLDivElement>(null)
 
+  const isPopout = window.location.search.includes('popout=1')
+
   const openReviews = () => window.open('https://chromewebstore.google.com/detail/qwacky/kieehbhdbincplacegpjdkoglfakboeo/reviews', '_blank')
   const openStore = () => window.open('https://chromewebstore.google.com/detail/qwacky/kieehbhdbincplacegpjdkoglfakboeo', '_blank')
+
+  const handlePopout = () => {
+    chrome.runtime.sendMessage({ action: 'popoutExtension' })
+    window.close()
+  }
 
   const handleLogoutClick = () => {
     setShowLogoutConfirm(true)
@@ -165,6 +172,11 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
               ))}
             </DropdownContent>
           </ThemeDropdown>
+          {!isPopout && (
+            <IconButton onClick={handlePopout}>
+              <MdOpenInNew size={24} />
+            </IconButton>
+          )}
           <MenuDropdown ref={menuDropdownRef}>
             <IconButton onClick={() => setMenuDropdownOpen(!menuDropdownOpen)}>
               <MdMenu size={24} />
@@ -279,7 +291,7 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
               autoFocus
             />
             <NicknameDialogActions>
-              {accountNicknames[currentAccount!] && (
+              {currentAccount && accountNicknames[currentAccount] && (
                 <NicknameButton onClick={handleClearNickname}>
                   <MdClose size={18} />
                   Clear

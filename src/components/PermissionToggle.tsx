@@ -49,6 +49,7 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
   const { requestPermissions, removePermissions, checkPermission } = usePermissions()
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const tooltipTimeoutRef = useRef<number | null>(null);
+  const reloadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const permissionType = Object.entries(PERMISSIONS).find(
     ([_, permission]) => permission.name === name
@@ -81,6 +82,7 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
       if (tooltipTimeoutRef.current) {
         window.clearTimeout(tooltipTimeoutRef.current);
       }
+      if (reloadTimeoutRef.current) clearTimeout(reloadTimeoutRef.current);
     };
   }, []);
 
@@ -158,7 +160,8 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
           setStatus({ message: 'Reloading to apply changes...', type: 'success' })
           onChange(true)
 
-          setTimeout(() => {
+          if (reloadTimeoutRef.current) clearTimeout(reloadTimeoutRef.current)
+          reloadTimeoutRef.current = setTimeout(() => {
             api.runtime.sendMessage({ action: 'reload-extension' })
           }, 1500)
         } else {
@@ -176,7 +179,8 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
           await removePermissions('contextMenuFeatures')
           onChange(false)
 
-          setTimeout(() => {
+          if (reloadTimeoutRef.current) clearTimeout(reloadTimeoutRef.current)
+          reloadTimeoutRef.current = setTimeout(() => {
             api.runtime.sendMessage({ action: 'reload-extension' })
           }, 1500)
         } else {
@@ -225,6 +229,7 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
             <InfoIconContainer
               onMouseEnter={showTooltip}
               onMouseLeave={hideTooltip}
+              onClick={showTooltip}
             >
               <InfoIcon size={16} />
               <Tooltip

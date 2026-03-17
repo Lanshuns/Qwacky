@@ -78,6 +78,7 @@ export const Dashboard = () => {
 
   useEffect(() => {
     chrome.storage.local.get('dashboardActiveTab', (result) => {
+      if (chrome.runtime.lastError) return;
       if (result.dashboardActiveTab === 'generate' || result.dashboardActiveTab === 'send') {
         setActiveTab(result.dashboardActiveTab);
       }
@@ -100,6 +101,7 @@ export const Dashboard = () => {
           setReverseAliases(loadedAliases);
         } catch (error) {
           console.error('Error loading data:', error);
+          showNotification("Failed to load data");
           setAddresses([]);
           setReverseAliases([]);
         }
@@ -145,6 +147,7 @@ export const Dashboard = () => {
       }
     } catch (error) {
       console.error("Error generating address:", error);
+      showNotification("Failed to generate address");
     } finally {
       setLoading(false);
     }
@@ -198,10 +201,11 @@ export const Dashboard = () => {
     );
   }, [addresses, pickerSearch]);
 
-  const handleConvertReverseAlias = async (event?: React.MouseEvent) => {
+  const handleConvertReverseAlias = async (event?: React.MouseEvent | React.KeyboardEvent) => {
     const email = recipientEmail.trim();
     if (!email || !email.includes("@") || !email.includes(".")) return;
-    const senderLocal = effectiveSender || userData!.user.username;
+    if (!userData) return;
+    const senderLocal = effectiveSender || userData.user.username;
     const alias = email.replace("@", "_at_") + "_" + senderLocal + "@duck.com";
 
     await duckService.saveReverseAlias(email, alias);
@@ -222,7 +226,8 @@ export const Dashboard = () => {
     });
 
     navigator.clipboard.writeText(alias);
-    showNotification("Copied!", event?.nativeEvent);
+    const nativeEvent = event && 'clientX' in event.nativeEvent ? event.nativeEvent as MouseEvent : undefined;
+    showNotification("Copied!", nativeEvent);
     setRecipientEmail("");
   };
 
@@ -347,7 +352,7 @@ export const Dashboard = () => {
             {addresses.length > 0 && (
               <SenderSelector onClick={() => { setShowAliasPicker(true); setPickerSearch(''); }}>
                 <span>From:</span>
-                <span>{(effectiveSender || userData!.user.username) + '@duck.com'}</span>
+                <span>{(effectiveSender || userData?.user.username) + '@duck.com'}</span>
                 <MdKeyboardArrowDown size={18} />
               </SenderSelector>
             )}
@@ -359,7 +364,7 @@ export const Dashboard = () => {
                 value={recipientEmail}
                 onChange={(e) => setRecipientEmail(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") handleConvertReverseAlias(e as unknown as React.MouseEvent);
+                  if (e.key === "Enter") handleConvertReverseAlias(e);
                 }}
               />
               <ReverseAliasConvertButton
@@ -376,7 +381,7 @@ export const Dashboard = () => {
               <PickerContainer>
                 <PickerHeader>
                   <h3>Send from</h3>
-                  <button onClick={() => { setShowAliasPicker(false); setPickerSearch(''); }}>
+                  <button aria-label="Close picker" onClick={() => { setShowAliasPicker(false); setPickerSearch(''); }}>
                     <MdClose size={20} />
                   </button>
                 </PickerHeader>
@@ -392,7 +397,7 @@ export const Dashboard = () => {
                     onClick={() => { setSelectedSender(null); setShowAliasPicker(false); setPickerSearch(''); }}
                   >
                     <PickerItemText>
-                      {userData!.user.username}@duck.com
+                      {userData?.user.username}@duck.com
                       {!effectiveSender && <MdCheck size={14} style={{ marginLeft: 6, verticalAlign: 'middle' }} />}
                     </PickerItemText>
                     <PickerItemLabel>Personal address</PickerItemLabel>

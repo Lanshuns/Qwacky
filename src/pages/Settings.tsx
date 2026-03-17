@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { MdFileUpload, MdArrowBack, MdDescription, MdSecurity, MdDownload, MdContentPaste, MdSync, MdRefresh, MdWarning, MdKeyboardArrowDown } from "react-icons/md";
+import { MdFileUpload, MdArrowBack, MdDescription, MdSecurity, MdDownload, MdSync, MdRefresh, MdWarning, MdKeyboardArrowDown } from "react-icons/md";
 import { DuckService } from "../services/DuckService";
 import { SyncService } from "../services/SyncService";
 import { usePermissions, PERMISSIONS, ALL_PERMISSIONS } from "../context/PermissionContext";
@@ -36,6 +36,7 @@ import {
 declare const browser: typeof chrome;
 const api = typeof browser !== 'undefined' ? browser : chrome;
 const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
+const isFirefoxPopup = isFirefox && !window.location.search.includes('popout=1');
 
 interface SettingsProps {
   onBack?: () => void;
@@ -47,6 +48,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
   const { accounts, currentAccount } = useApp();
   const [permissionState, setPermissionState] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importingRef = useRef(false);
   const duckService = new DuckService();
   const syncService = new SyncService();
   const [loading, setLoading] = useState<Record<string, boolean>>({});
@@ -59,6 +61,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [showExportWarning, setShowExportWarning] = useState(false);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [showPopoutPrompt, setShowPopoutPrompt] = useState(false);
   const [backupSummary, setBackupSummary] = useState<BackupSummary | null>(null);
   const [pendingImportData, setPendingImportData] = useState<string | null>(null);
   const [syncStats, setSyncStats] = useState<{
@@ -290,13 +293,16 @@ export const Settings = ({ onBack }: SettingsProps) => {
       const { data, summary } = await duckService.exportBackup(selectedAccounts, includeSession);
       const blob = new Blob([data], { type: 'application/json;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
-      const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute("href", url);
-      downloadAnchorNode.setAttribute("download", `qwacky_backup_${getDateString()}.json`);
-      document.body.appendChild(downloadAnchorNode);
-      downloadAnchorNode.click();
-      downloadAnchorNode.remove();
-      URL.revokeObjectURL(url);
+      try {
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", url);
+        downloadAnchorNode.setAttribute("download", `qwacky_backup_${getDateString()}.json`);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+      } finally {
+        URL.revokeObjectURL(url);
+      }
       setBackupSummary(summary);
     } catch (error) {
       console.error("Failed to export backup:", error);
@@ -329,6 +335,8 @@ export const Settings = ({ onBack }: SettingsProps) => {
   };
 
   const processImport = async (text: string) => {
+    if (importingRef.current) return;
+    importingRef.current = true;
     try {
       const parsed = JSON.parse(text);
 
@@ -365,6 +373,8 @@ export const Settings = ({ onBack }: SettingsProps) => {
       setImportResult("Unrecognized file format");
     } catch {
       setImportResult("Import failed, invalid file");
+    } finally {
+      importingRef.current = false;
     }
   };
 
@@ -514,21 +524,11 @@ export const Settings = ({ onBack }: SettingsProps) => {
             {loading.export ? 'Exporting...' : 'Export Backup'}
           </BackupButton>
           <BackupButton
-            onClick={isFirefox ? undefined : handleImportClick}
+            onClick={isFirefoxPopup ? () => setShowPopoutPrompt(true) : handleImportClick}
             disabled={loading.import}
-            style={isFirefox ? { cursor: 'default', opacity: '0.9' } : undefined}
           >
-            {isFirefox ? (
-              <>
-                <MdContentPaste size={20} />
-                {loading.import ? 'Importing...' : 'Ctrl+V to import'}
-              </>
-            ) : (
-              <>
-                <MdFileUpload size={20} />
-                {loading.import ? 'Importing...' : 'Import Backup'}
-              </>
-            )}
+            <MdFileUpload size={20} />
+            {loading.import ? 'Importing...' : 'Import Backup'}
           </BackupButton>
         </ExportButtonsContainer>
 
@@ -593,6 +593,21 @@ export const Settings = ({ onBack }: SettingsProps) => {
       </Section>
 
       <ConfirmDialog
+        isOpen={showPopoutPrompt}
+        variant="info"
+        title="Open in New Window"
+        message="Firefox doesn't allow file selection from the popup. The extension will open in a new window where you can import your backup normally."
+        confirmLabel="Open Window"
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          setShowPopoutPrompt(false);
+          chrome.runtime.sendMessage({ action: 'popoutExtension' });
+          window.close();
+        }}
+        onCancel={() => setShowPopoutPrompt(false)}
+      />
+
+      <ConfirmDialog
         isOpen={showExportWarning}
         variant="warning"
         title="Security Warning"
@@ -627,10 +642,13 @@ export const Settings = ({ onBack }: SettingsProps) => {
         message={backupSummary ? buildSummaryMessage(backupSummary) : ''}
         confirmLabel="Close"
         singleButton
-        onConfirm={() => {
-          const needsReload = backupSummary?.action === 'import' && backupSummary?.includesSession;
+        onConfirm={async () => {
+          const isImport = backupSummary?.action === 'import';
           setBackupSummary(null);
-          if (needsReload) window.location.reload();
+          if (isImport) {
+            await chrome.storage.local.set({ showSettings: false });
+            window.location.reload();
+          }
         }}
       />
     </SettingsContainer>

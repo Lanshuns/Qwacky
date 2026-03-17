@@ -1,3 +1,5 @@
+import { errorMessage } from '../utils/safeOps';
+
 interface Address {
   value: string;
   timestamp: number;
@@ -200,7 +202,11 @@ export class SyncService {
       if (syncResult[accountKey]) {
         const syncData = syncResult[accountKey];
         const decompressed = await this.decompressData(syncData);
-        syncAddresses = JSON.parse(decompressed);
+        try {
+          syncAddresses = JSON.parse(decompressed);
+        } catch {
+          syncAddresses = [];
+        }
       }
 
       const mergedAddresses = await this.mergeAddresses(localAddresses, syncAddresses);
@@ -226,19 +232,19 @@ export class SyncService {
         success: true, 
         message: `Successfully synced ${mergedAddresses.length} addresses${compressed ? ' (compressed)' : ''}` 
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Migration error:', error);
-      
-      if (error.message?.includes('QUOTA_BYTES')) {
-        return { 
-          success: false, 
-          message: 'Storage quota exceeded. Try reducing the number of addresses.' 
+
+      if (errorMessage(error).includes('QUOTA_BYTES')) {
+        return {
+          success: false,
+          message: 'Storage quota exceeded. Try reducing the number of addresses.'
         };
       }
-      
-      return { 
-        success: false, 
-        message: error.message || 'Migration failed' 
+
+      return {
+        success: false,
+        message: errorMessage(error) || 'Migration failed'
       };
     }
   }
@@ -297,10 +303,10 @@ export class SyncService {
       });
 
       await this.saveToSessionCache(accountKey, addressesWithTimestamp);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Sync save error:', error);
-      
-      if (error.message?.includes('QUOTA_BYTES')) {
+
+      if (errorMessage(error).includes('QUOTA_BYTES')) {
         await this.setSyncEnabled(false);
         throw new Error('Sync quota exceeded. Sync has been disabled.');
       }
@@ -332,7 +338,12 @@ export class SyncService {
 
       const data = result[accountKey];
       const jsonData = await this.decompressData(data);
-      const addresses = JSON.parse(jsonData);
+      let addresses;
+      try {
+        addresses = JSON.parse(jsonData);
+      } catch {
+        addresses = [];
+      }
 
       await this.saveToSessionCache(accountKey, addresses);
 
@@ -357,7 +368,12 @@ export class SyncService {
     }
 
     const jsonData = await this.decompressData(newValue);
-    const syncAddresses = JSON.parse(jsonData);
+    let syncAddresses;
+    try {
+      syncAddresses = JSON.parse(jsonData);
+    } catch {
+      syncAddresses = [];
+    }
 
     const localResult = await chrome.storage.local.get(accountKey);
     const localAddresses = localResult[accountKey] || [];
@@ -371,7 +387,12 @@ export class SyncService {
     chrome.runtime.sendMessage({
       action: 'syncAddressesUpdated',
       addresses: mergedAddresses
-    }).catch(() => {});
+    }).catch((err: unknown) => {
+      const msg = errorMessage(err);
+      if (!msg.includes('Receiving end does not exist')) {
+        console.error('Message send failed:', msg);
+      }
+    });
   }
 
   async pullFromSync(): Promise<{ success: boolean; message: string }> {
@@ -395,7 +416,12 @@ export class SyncService {
       }
 
       const jsonData = await this.decompressData(syncResult[accountKey]);
-      const syncAddresses = JSON.parse(jsonData);
+      let syncAddresses;
+      try {
+        syncAddresses = JSON.parse(jsonData);
+      } catch {
+        syncAddresses = [];
+      }
 
       const localResult = await chrome.storage.local.get(accountKey);
       const localAddresses = localResult[accountKey] || [];
@@ -440,17 +466,22 @@ export class SyncService {
       chrome.runtime.sendMessage({
         action: 'syncAddressesUpdated',
         addresses: mergedAddresses
-      }).catch(() => {});
+      }).catch((err: unknown) => {
+        const msg = errorMessage(err);
+        if (!msg.includes('Receiving end does not exist')) {
+          console.error('Message send failed:', msg);
+        }
+      });
 
-      return { 
-        success: true, 
-        message: `Successfully synced ${mergedAddresses.length} addresses` 
+      return {
+        success: true,
+        message: `Successfully synced ${mergedAddresses.length} addresses`
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Pull from sync error:', error);
-      return { 
-        success: false, 
-        message: error.message || 'Failed to pull from sync' 
+      return {
+        success: false,
+        message: errorMessage(error) || 'Failed to pull from sync'
       };
     }
   }

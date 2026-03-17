@@ -15,6 +15,7 @@ const api: FirefoxBrowserType = typeof browser !== 'undefined' ? browser : chrom
 
 import { DuckService } from './services/DuckService'
 import { SyncService } from './services/SyncService'
+import { errorMessage } from './utils/safeOps'
 
 const duckService = new DuckService()
 const syncService = new SyncService()
@@ -22,6 +23,7 @@ const syncService = new SyncService()
 const FEATURE_STATE_KEY = 'contextMenuEnabled'
 const CONTEXT_MENU_ID = 'generate-duck-address'
 const isFirefox = navigator.userAgent.toLowerCase().includes('firefox')
+const isAndroid = navigator.userAgent.toLowerCase().includes('android')
 
 const FeatureState = {
   async get(): Promise<boolean> {
@@ -162,7 +164,7 @@ const Feature = {
   }
 }
 
-const initialize = async () => {  
+const initialize = async () => {
   try {
     const [hasState, hasPermissions] = await Promise.all([
       api.storage.local.get(FEATURE_STATE_KEY),
@@ -210,15 +212,9 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
   
   if (message.action === 'openDdgEmail') {
-    api.windows.create({
-      url: 'https://duckduckgo.com/email/settings/account',
-      type: 'popup',
-      width: 900,
-      height: 700
-    }, (win) => {
-      const tabId = win?.tabs?.[0]?.id;
-      if (!tabId) return;
+    const ddgUrl = 'https://duckduckgo.com/email/settings/account'
 
+    const onTabReady = (tabId: number) => {
       const listener = (tid: number, changeInfo: chrome.tabs.TabChangeInfo) => {
         if (tid === tabId && changeInfo.status === 'complete') {
           api.tabs.onUpdated.removeListener(listener);
@@ -228,8 +224,39 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         }
       };
       api.tabs.onUpdated.addListener(listener);
-    });
+    }
+
+    if (isAndroid) {
+      api.tabs.create({ url: ddgUrl }, (tab) => {
+        if (tab?.id) onTabReady(tab.id);
+      });
+    } else {
+      api.windows.create({
+        url: ddgUrl,
+        type: 'popup',
+        width: 900,
+        height: 700
+      }, (win) => {
+        const tabId = win?.tabs?.[0]?.id;
+        if (tabId) onTabReady(tabId);
+      });
+    }
     return false;
+  }
+
+  if (message.action === 'popoutExtension') {
+    const popoutUrl = api.runtime.getURL('index.html') + '?popout=1'
+    if (isAndroid) {
+      api.tabs.create({ url: popoutUrl })
+    } else {
+      api.windows.create({
+        url: popoutUrl,
+        type: 'popup',
+        width: 420,
+        height: 600,
+      })
+    }
+    return false
   }
 
   if (message.action === 'reload-extension') {
@@ -245,21 +272,21 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.action === 'requestOTP') {
     duckService.login(message.username)
       .then(sendResponse)
-      .catch(err => sendResponse({ status: 'error', message: err.message || 'Unknown error' }))
+      .catch(err => sendResponse({ status: 'error', message: errorMessage(err) }))
     return true
   }
-  
+
   if (message.action === 'verifyOTP') {
     duckService.verifyOTP(message.username, message.otp)
       .then(sendResponse)
-      .catch(err => sendResponse({ status: 'error', message: err.message || 'Unknown error' }))
+      .catch(err => sendResponse({ status: 'error', message: errorMessage(err) }))
     return true
   }
-  
+
   if (message.action === 'generateAddress') {
     duckService.generateAddress(message.domain)
       .then(sendResponse)
-      .catch(err => sendResponse({ status: 'error', message: err.message || 'Unknown error' }))
+      .catch(err => sendResponse({ status: 'error', message: errorMessage(err) }))
     return true
   }
 
@@ -280,10 +307,13 @@ if (api.contextMenus) {
 
       const response = await duckService.generateAddress(domain || undefined)
       if (response.status === 'error') {
-        await api.tabs.sendMessage(tab.id, {
-          type: 'show-notification',
-          message: response.message || 'Failed to generate address. Login required?'
-        })
+        try {
+          await api.tabs.sendMessage(tab.id, {
+            type: 'show-notification',
+            message: response.message || 'Failed to generate address. Login required?'
+          });
+        } catch {
+        }
         return
       }
 
@@ -292,10 +322,13 @@ if (api.contextMenus) {
         files: ['contentScript.js']
       })
 
-      await api.tabs.sendMessage(tab.id, {
-        type: 'fill-address',
-        address: response.address
-      })
+      try {
+        await api.tabs.sendMessage(tab.id, {
+          type: 'fill-address',
+          address: response.address
+        });
+      } catch {
+      }
     } catch (error) {
       console.error('Error in context menu handler:', error)
     }
@@ -304,13 +337,10 @@ if (api.contextMenus) {
 
 if (api.commands) {
   api.commands.onCommand.addListener(async (command) => {
-    console.log('Command received:', command)
     if (command !== 'generate-duck-address') return
 
     try {
-      console.log('Processing generate-duck-address command')
       const [activeTab] = await api.tabs.query({ active: true, currentWindow: true })
-      console.log('Active tab:', activeTab)
       if (!activeTab?.id || activeTab.id < 0) return
 
       let domain = ''
@@ -319,15 +349,16 @@ if (api.commands) {
           domain = new URL(activeTab.url).hostname
         } catch {}
       }
-      console.log('Domain:', domain)
 
       const response = await duckService.generateAddress(domain || undefined)
-      console.log('Generate response:', response)
       if (response.status === 'error') {
-        await api.tabs.sendMessage(activeTab.id, {
-          type: 'show-notification',
-          message: response.message || 'Failed to generate address. Login required?'
-        })
+        try {
+          await api.tabs.sendMessage(activeTab.id, {
+            type: 'show-notification',
+            message: response.message || 'Failed to generate address. Login required?'
+          });
+        } catch {
+        }
         return
       }
 
@@ -336,16 +367,17 @@ if (api.commands) {
         files: ['contentScript.js']
       })
 
-      await api.tabs.sendMessage(activeTab.id, {
-        type: 'fill-address',
-        address: response.address
-      })
+      try {
+        await api.tabs.sendMessage(activeTab.id, {
+          type: 'fill-address',
+          address: response.address
+        });
+      } catch {
+      }
     } catch (error) {
       console.error('Error in command handler:', error)
     }
   })
-} else {
-  console.log('Commands API not available')
 }
 
 api.storage.onChanged.addListener(async (changes, namespace) => {

@@ -91,7 +91,7 @@ type SortOrder = 'newest' | 'oldest';
 
 const renderItem = (
   item: ListItem,
-  index: number,
+  _index: number,
   copyToClipboard: (text: string, event?: MouseEvent) => void,
   formatTime: (timestamp: number) => string,
   editing: EditingState | null,
@@ -129,7 +129,7 @@ const renderItem = (
   ) || [];
 
   return (
-    <AddressItem key={`${item.key}-${index}`} role="listitem">
+    <AddressItem key={item.key} role="listitem">
       <AddressMain>
         <AddressHeader
           onClick={(e) => copyToClipboard(item.copyText, e.nativeEvent)}
@@ -280,8 +280,11 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
         setEditing({ key: item.key, notes: item.notes || '', autoFocus: true });
         onAutoEditComplete?.();
         setTimeout(() => {
-          notesInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          notesInputRef.current?.focus();
+          try {
+            notesInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            notesInputRef.current?.focus();
+          } catch {
+          }
         }, 100);
       }
     }

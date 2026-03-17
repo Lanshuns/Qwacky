@@ -140,26 +140,7 @@ export const AddressList = styled.div<{ hidden?: boolean }>`
   background: ${props => props.theme.surface};
   border-radius: 8px;
   padding: 8px;
-  max-height: 600px;
-  overflow-y: auto;
   border: 1px solid ${props => props.theme.borderLight};
-
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: ${props => props.theme.border};
-    border-radius: 3px;
-
-    &:hover {
-      background: ${props => props.theme.textSecondary};
-    }
-  }
 `
 
 export const IconButton = styled(BaseIconButton)`
@@ -212,6 +193,12 @@ export const AddressItem = styled.div`
 
   &:hover .action-buttons {
     opacity: 1;
+  }
+
+  @media (hover: none) {
+    .action-buttons {
+      opacity: 1;
+    }
   }
 `
 

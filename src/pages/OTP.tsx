@@ -1,9 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { DuckService } from '../services/DuckService'
 import { useApp } from '../context/AppContext'
 import { MdArrowBack } from 'react-icons/md'
 import { BackButton } from '../styles/SharedStyles'
-import { OTPContainer, OTPUsername, OTPMessage, OTPInput, OTPButton, OTPErrorMessage } from '../styles/pages.styles'
+import {
+  OTPContainer, OTPUsername, OTPMessage, OTPInput, OTPButton,
+  OTPErrorMessage, OTPResendRow, OTPResendButton, OTPCooldownText,
+  OTPHint, OTPSuccessMessage
+} from '../styles/pages.styles'
 
 interface OTPProps {
   username: string;
@@ -16,21 +20,64 @@ export const OTP = ({ username, onBack, isAddingAccount, onSuccess }: OTPProps) 
   const [otp, setOtp] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [cooldown, setCooldown] = useState(0)
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendSuccess, setResendSuccess] = useState('')
   const { setUserData, switchAccount } = useApp()
   const duckService = new DuckService()
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const resendTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const verifyingRef = useRef(false)
+
+  const startCooldown = useCallback(() => {
+    setCooldown(60)
+    if (cooldownRef.current) clearInterval(cooldownRef.current)
+    cooldownRef.current = setInterval(() => {
+      setCooldown(prev => {
+        if (prev <= 1) {
+          if (cooldownRef.current) clearInterval(cooldownRef.current)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }, [])
 
   useEffect(() => {
     chrome.storage.local.set({
       loginState: 'otp',
       tempUsername: username
     });
+    startCooldown()
 
     return () => {
       chrome.storage.local.remove(['otp_verification_in_progress']);
+      if (cooldownRef.current) clearInterval(cooldownRef.current)
+      if (resendTimeoutRef.current) clearTimeout(resendTimeoutRef.current)
     };
-  }, [username]);
+  }, [username, startCooldown]);
+
+  const handleResend = async () => {
+    setResendLoading(true)
+    setError('')
+    setResendSuccess('')
+
+    const response = await duckService.login(username)
+
+    setResendLoading(false)
+    if (response.status === 'success') {
+      setResendSuccess('A new passphrase has been sent to your email.')
+      startCooldown()
+      if (resendTimeoutRef.current) clearTimeout(resendTimeoutRef.current)
+      resendTimeoutRef.current = setTimeout(() => setResendSuccess(''), 5000)
+    } else {
+      setError(response.message || 'Failed to resend passphrase.')
+    }
+  }
 
   const handleVerify = async () => {
+    if (verifyingRef.current) return;
+    verifyingRef.current = true;
     setLoading(true);
     setError('');
 
@@ -72,6 +119,7 @@ export const OTP = ({ username, onBack, isAddingAccount, onSuccess }: OTPProps) 
       await chrome.storage.local.remove(['otp_verification_in_progress']);
     } finally {
       setLoading(false);
+      verifyingRef.current = false;
     }
   };
 
@@ -90,7 +138,13 @@ export const OTP = ({ username, onBack, isAddingAccount, onSuccess }: OTPProps) 
       ? words.slice(0, 4).join(' ')
       : words.join(' ');
 
-    setOtp(formattedText.toLowerCase());
+    const cleaned = formattedText.toLowerCase();
+    const validWords = cleaned.split(' ').filter(Boolean).every(word => /^[a-z]+$/.test(word));
+    if (validWords) {
+      setOtp(cleaned);
+    } else {
+      setOtp(formattedText);
+    }
   }
 
   return (
@@ -120,7 +174,21 @@ export const OTP = ({ username, onBack, isAddingAccount, onSuccess }: OTPProps) 
       >
         {loading ? 'Verifying...' : 'Verify OTP'}
       </OTPButton>
+
+      <OTPResendRow>
+        <OTPResendButton onClick={handleResend} disabled={cooldown > 0 || resendLoading}>
+          {resendLoading ? 'Sending...' : 'Resend passphrase'}
+        </OTPResendButton>
+        {cooldown > 0 && <OTPCooldownText>({cooldown}s)</OTPCooldownText>}
+      </OTPResendRow>
+
       {error && <OTPErrorMessage>{error}</OTPErrorMessage>}
+      {resendSuccess && <OTPSuccessMessage>{resendSuccess}</OTPSuccessMessage>}
+
+      <OTPHint>
+        Didn't receive it? Check your spam or junk folder. Some email providers
+        (like ProtonMail) may delay or filter messages from DuckDuckGo.
+      </OTPHint>
     </OTPContainer>
   )
 }

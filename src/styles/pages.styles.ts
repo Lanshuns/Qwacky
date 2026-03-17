@@ -118,6 +118,60 @@ export const OTPErrorMessage = styled.p`
   font-weight: 500;
 `
 
+export const OTPResendRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+`
+
+export const OTPResendButton = styled.button`
+  background: none;
+  border: none;
+  color: ${props => props.theme.primary};
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0;
+  transition: opacity 0.2s;
+
+  &:hover:not(:disabled) {
+    text-decoration: underline;
+    opacity: 0.85;
+  }
+
+  &:disabled {
+    color: ${props => props.theme.textTertiary};
+    cursor: not-allowed;
+  }
+`
+
+export const OTPCooldownText = styled.span`
+  font-size: 12px;
+  color: ${props => props.theme.textTertiary};
+  font-weight: 500;
+`
+
+export const OTPHint = styled.div`
+  margin-top: 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: ${props => props.theme.surface};
+  border: 1px solid ${props => props.theme.borderLight};
+  font-size: 12px;
+  color: ${props => props.theme.textSecondary};
+  line-height: 1.5;
+  text-align: left;
+`
+
+export const OTPSuccessMessage = styled.p`
+  color: ${props => props.theme.success};
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 500;
+`
+
 
 export const DashboardContainer = styled.div`
   padding: 16px 20px;

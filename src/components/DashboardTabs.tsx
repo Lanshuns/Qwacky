@@ -9,7 +9,7 @@ interface DashboardTabsProps {
 
 export const DashboardTabs: React.FC<DashboardTabsProps> = ({ activeTab, onTabChange }) => {
   return (
-    <TabsContainer>
+    <TabsContainer role="tablist">
       <Tab
         active={activeTab === 'generate'}
         onClick={() => onTabChange('generate')}

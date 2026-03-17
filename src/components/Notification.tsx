@@ -45,10 +45,6 @@ export const useNotification = () => {
     const position = event ? { x: event.clientX + 10, y: event.clientY + 10 } : undefined;
 
     setNotifications(prev => [...prev, { id, message, position }]);
-
-    setTimeout(() => {
-      setNotifications(prev => prev.filter(item => item.id !== id));
-    }, 1500);
   };
 
   const NotificationRenderer = () => (

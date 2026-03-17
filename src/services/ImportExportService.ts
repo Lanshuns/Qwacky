@@ -218,6 +218,10 @@ export class ImportExportService {
         return { success: false, hasSession: false, error: 'Invalid JSON format' };
       }
 
+      if (!backupData || typeof backupData !== 'object' || !backupData.version || !backupData.timestamp) {
+        return { success: false, hasSession: false, error: 'Invalid backup file format' };
+      }
+
       if (backupData.type !== 'qwacky_backup') {
         return { success: false, hasSession: false, error: 'Not a valid Qwacky backup file' };
       }

@@ -61,12 +61,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     const loadAccounts = async () => {
       const result = await chrome.storage.local.get(['accounts', 'currentAccount'])
-      if (result.accounts) {
+      if (Array.isArray(result.accounts)) {
         setAccounts(result.accounts)
       }
       if (result.currentAccount) {
         setCurrentAccount(result.currentAccount)
-        const account = result.accounts.find((acc: Account) => acc.username === result.currentAccount)
+        const account = Array.isArray(result.accounts) ? result.accounts.find((acc: Account) => acc.username === result.currentAccount) : undefined
         if (account) {
           setUserData(account.userData)
         }
@@ -106,7 +106,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       if (areaName === 'local' && changes.accounts) {
         const newAccounts = changes.accounts.newValue;
-        if (newAccounts) {
+        if (Array.isArray(newAccounts)) {
           setAccounts(newAccounts);
           if (currentAccount) {
             const account = newAccounts.find((acc: Account) => acc.username === currentAccount);

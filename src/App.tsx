@@ -65,12 +65,13 @@ const GlobalStyle = createGlobalStyle`
 
 const Container = styled.div`
   width: 400px;
+  max-width: 100%;
   min-height: 480px;
   color: ${props => props.theme.text};
   position: relative;
   margin: auto;
   background: ${props => props.theme.background};
-  overflow: hidden;
+  overflow-x: hidden;
 `
 
 export const App = () => {

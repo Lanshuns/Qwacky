@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { DuckService } from '../services/DuckService'
 import { MdArrowBack } from 'react-icons/md'
 import { useApp } from '../context/AppContext'
@@ -18,6 +18,13 @@ export const Login = ({ onSubmit, isAddingAccount, onBack }: LoginProps) => {
   const [showSignupWindow, setShowSignupWindow] = useState(false)
   const duckService = new DuckService()
   const { accounts } = useApp()
+  const checkClosedRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (checkClosedRef.current) clearInterval(checkClosedRef.current);
+    };
+  }, []);
 
   const sanitizeUsername = (input: string) => {
     return input.replace(/[^a-zA-Z0-9-_]/g, '');
@@ -36,24 +43,25 @@ export const Login = ({ onSubmit, isAddingAccount, onBack }: LoginProps) => {
   }
 
   const handleCreateAccount = () => {
-    const width = 480;
-    const height = 720;
-    const left = (screen.width - width) / 2;
-    const top = (screen.height - height) / 2;
+    const isMobile = /android|mobile/i.test(navigator.userAgent);
+    const signupUrl = 'https://duckduckgo.com/email/start';
 
-    const signupWindow = window.open(
-      'https://duckduckgo.com/email/start',
-      'duckSignup',
-      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
-    );
+    const signupWindow = isMobile
+      ? window.open(signupUrl, '_blank')
+      : window.open(
+          signupUrl,
+          'duckSignup',
+          `width=480,height=720,left=${(screen.width - 480) / 2},top=${(screen.height - 720) / 2},scrollbars=yes,resizable=yes`
+        );
 
     if (signupWindow) {
       setShowSignupWindow(true);
 
-      const checkClosed = setInterval(() => {
+      checkClosedRef.current = setInterval(() => {
         if (signupWindow.closed) {
           setShowSignupWindow(false);
-          clearInterval(checkClosed);
+          clearInterval(checkClosedRef.current!);
+          checkClosedRef.current = null;
         }
       }, 1000);
     }
