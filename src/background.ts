@@ -383,12 +383,16 @@ if (api.commands) {
 api.storage.onChanged.addListener(async (changes, namespace) => {
   if (namespace === 'sync') {
     for (const key in changes) {
-      if (key.startsWith('addresses_')) {
-        try {
+      try {
+        if (key.startsWith('addresses_')) {
           await syncService.handleSyncChange(key, changes[key].newValue || []);
-        } catch (error) {
-          console.error('Error handling sync change:', error);
+        } else if (key.startsWith('reverse_aliases_')) {
+          await syncService.handleReverseAliasSyncChange(key, changes[key].newValue || []);
+        } else if (key === 'session_data') {
+          await syncService.handleSessionSyncChange(changes[key].newValue);
         }
+      } catch (error) {
+        console.error('Error handling sync change:', error);
       }
     }
   }

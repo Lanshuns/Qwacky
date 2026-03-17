@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { DuckService } from '../services/DuckService'
+import { SyncService } from '../services/SyncService'
 import { UserData } from '../types'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -26,6 +28,7 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
 const duckService = new DuckService()
+const syncService = new SyncService()
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }: { children: React.ReactNode }) => {
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
@@ -124,6 +127,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       chrome.storage.onChanged.removeListener(handleStorageChange);
     };
   }, [currentAccount]);
+
+  const [syncSessionPrompt, setSyncSessionPrompt] = useState<{ newAccounts: string[]; sessionData: any } | null>(null);
+
+  useEffect(() => {
+    const handleSyncMessage = (message: any) => {
+      if (message.action === 'syncSessionAvailable' && message.newAccounts?.length > 0) {
+        setSyncSessionPrompt({ newAccounts: message.newAccounts, sessionData: message.sessionData });
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(handleSyncMessage);
+    return () => chrome.runtime.onMessage.removeListener(handleSyncMessage);
+  }, []);
+
+  const handleRestoreSyncSession = async () => {
+    if (!syncSessionPrompt) return;
+    try {
+      await syncService.restoreSessionFromSync(syncSessionPrompt.sessionData);
+      const result = await chrome.storage.local.get(['accounts', 'currentAccount']);
+      if (Array.isArray(result.accounts)) {
+        setAccounts(result.accounts);
+      }
+      if (result.currentAccount && !currentAccount) {
+        setCurrentAccount(result.currentAccount);
+        const account = result.accounts?.find((acc: Account) => acc.username === result.currentAccount);
+        if (account) setUserData(account.userData);
+      }
+    } catch (error) {
+      console.error('Error restoring sync session:', error);
+    }
+    setSyncSessionPrompt(null);
+  };
 
   const toggleDarkMode = () => {
     if (themeMode === 'system') {
@@ -267,6 +302,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       removeAccount
     }}>
       {children}
+      <ConfirmDialog
+        isOpen={syncSessionPrompt !== null}
+        variant="info"
+        title="Synced Accounts Found"
+        message={syncSessionPrompt ? `Found ${syncSessionPrompt.newAccounts.length} synced account(s): ${syncSessionPrompt.newAccounts.map(u => u + '@duck.com').join(', ')}. Would you like to restore them?` : ''}
+        confirmLabel="Restore"
+        cancelLabel="Cancel"
+        onConfirm={handleRestoreSyncSession}
+        onCancel={() => setSyncSessionPrompt(null)}
+      />
     </AppContext.Provider>
   )
 }

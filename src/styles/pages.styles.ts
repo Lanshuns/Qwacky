@@ -422,56 +422,6 @@ export const SettingsContainer = styled.div`
   padding: 16px 20px;
 `
 
-export const ExperimentalBadge = styled.span`
-  background: ${props => props.theme.primary}15;
-  color: ${props => props.theme.primary};
-  padding: 3px 10px;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-left: 8px;
-`
-
-export const WarningIcon = styled.div`
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  margin-left: 4px;
-  cursor: help;
-
-  svg {
-    color: #ff9f19;
-  }
-`
-
-export const WarningTooltip = styled.div`
-  position: absolute;
-  width: 200px;
-  background: ${props => props.theme.glassBg};
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  color: ${props => props.theme.text};
-  padding: 10px 12px;
-  border-radius: 10px;
-  font-size: 12px;
-  box-shadow: ${props => props.theme.shadowMd};
-  border: 1px solid ${props => props.theme.glassBorder};
-  z-index: 100;
-  line-height: 1.4;
-  left: 24px;
-  top: -5px;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
-
-  ${WarningIcon}:hover & {
-    opacity: 1;
-    visibility: visible;
-  }
-`
-
 export const SyncToggleSwitch = styled.label`
   position: relative;
   display: inline-block;
@@ -583,6 +533,36 @@ export const RefreshIconButton = styled.button`
   &:active:not(:disabled) svg {
     transform: rotate(360deg);
   }
+`
+
+export const SyncOptionsContainer = styled.div`
+  background-color: ${props => props.theme.surface};
+  border: 1px solid ${props => props.theme.border};
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+`
+
+export const SyncOptionsTitle = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${props => props.theme.textSecondary};
+  margin-bottom: 10px;
+`
+
+export const SyncOptionRow = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 0;
+`
+
+export const SyncOptionHint = styled.span`
+  font-size: 11px;
+  color: ${props => props.theme.textSecondary};
+  margin-left: 2px;
 `
 
 export const ExportButtonsContainer = styled.div`

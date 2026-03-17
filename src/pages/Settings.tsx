@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { MdFileUpload, MdArrowBack, MdDescription, MdSecurity, MdDownload, MdSync, MdRefresh, MdWarning, MdKeyboardArrowDown } from "react-icons/md";
+import { MdFileUpload, MdArrowBack, MdDescription, MdSecurity, MdDownload, MdSync, MdRefresh, MdKeyboardArrowDown } from "react-icons/md";
 import { DuckService } from "../services/DuckService";
-import { SyncService } from "../services/SyncService";
+import { SyncService, SyncOptions } from "../services/SyncService";
 import { usePermissions, PERMISSIONS, ALL_PERMISSIONS } from "../context/PermissionContext";
 import { useApp } from "../context/AppContext";
 import { BackupSummary } from "../types";
@@ -10,9 +10,6 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Section, SectionHeader, BackButton } from "../styles/SharedStyles";
 import {
   SettingsContainer,
-  ExperimentalBadge,
-  WarningIcon,
-  WarningTooltip,
   SyncToggleSwitch,
   SyncToggleInput,
   SyncToggleSlider,
@@ -20,6 +17,10 @@ import {
   SyncStatRow,
   SyncStatValue,
   RefreshIconButton,
+  SyncOptionsContainer,
+  SyncOptionsTitle,
+  SyncOptionRow,
+  SyncOptionHint,
   ExportButtonsContainer,
   BackupButton,
   HiddenFileInput,
@@ -52,13 +53,15 @@ export const Settings = ({ onBack }: SettingsProps) => {
   const duckService = new DuckService();
   const syncService = new SyncService();
   const [loading, setLoading] = useState<Record<string, boolean>>({});
-  const [syncEnabled, setSyncEnabled] = useState(false);
+  const [syncOptions, setSyncOptions] = useState<SyncOptions>({ enabled: false, addresses: true, reverseAliases: true, session: false, syncAccounts: [] });
   const [includeSession, setIncludeSession] = useState(false);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>(() =>
     accounts.map(a => a.username)
   );
   const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
+  const [syncAccountDropdownOpen, setSyncAccountDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const syncDropdownRef = useRef<HTMLDivElement>(null);
   const [showExportWarning, setShowExportWarning] = useState(false);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [showPopoutPrompt, setShowPopoutPrompt] = useState(false);
@@ -75,6 +78,9 @@ export const Settings = ({ onBack }: SettingsProps) => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setAccountDropdownOpen(false);
+      }
+      if (syncDropdownRef.current && !syncDropdownRef.current.contains(e.target as Node)) {
+        setSyncAccountDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -123,16 +129,26 @@ export const Settings = ({ onBack }: SettingsProps) => {
 
   useEffect(() => {
     const loadSyncState = async () => {
-      const enabled = await syncService.isSyncEnabled();
-      setSyncEnabled(enabled);
+      const options = await syncService.getSyncOptions();
+      setSyncOptions(options);
 
-      if (enabled) {
+      if (options.enabled) {
         const stats = await syncService.getSyncStats();
         setSyncStats(stats);
       }
     };
 
+    const handleSyncMessage = (message: any) => {
+      if (message.action === 'syncAutoDisabled') {
+        setSyncOptions(prev => ({ ...prev, enabled: false }));
+        setSyncStats(null);
+        setImportResult('Sync was automatically disabled because storage quota was exceeded.');
+      }
+    };
+
     loadSyncState();
+    chrome.runtime.onMessage.addListener(handleSyncMessage);
+    return () => chrome.runtime.onMessage.removeListener(handleSyncMessage);
   }, []);
 
   const handleSyncToggle = async (enabled: boolean) => {
@@ -140,11 +156,11 @@ export const Settings = ({ onBack }: SettingsProps) => {
       setLoading(prev => ({ ...prev, sync: true }));
 
       if (enabled) {
-        await syncService.setSyncEnabled(true);
-        const result = await syncService.migrateToSync();
+        const result = await syncService.setSyncEnabled(true);
 
         if (result.success) {
-          setSyncEnabled(true);
+          const options = await syncService.getSyncOptions();
+          setSyncOptions(options);
 
           const stats = await syncService.getSyncStats();
           setSyncStats(stats);
@@ -153,15 +169,47 @@ export const Settings = ({ onBack }: SettingsProps) => {
         }
       } else {
         await syncService.setSyncEnabled(false);
-        setSyncEnabled(false);
+        setSyncOptions(prev => ({ ...prev, enabled: false }));
         setSyncStats(null);
       }
     } catch (error: any) {
       await syncService.setSyncEnabled(false);
-      setSyncEnabled(false);
+      setSyncOptions(prev => ({ ...prev, enabled: false }));
     } finally {
       setLoading(prev => ({ ...prev, sync: false }));
     }
+  };
+
+  const handleSyncOptionChange = async (key: keyof SyncOptions, value: boolean) => {
+    const updated = { ...syncOptions, [key]: value };
+    setSyncOptions(updated);
+    await syncService.setSyncOptions({ [key]: value });
+
+    if (value && syncOptions.enabled) {
+      await syncService.migrateToSync();
+      const stats = await syncService.getSyncStats();
+      setSyncStats(stats);
+    }
+  };
+
+  const handleSyncAccountsChange = async (username: string) => {
+    const current = syncOptions.syncAccounts.length === 0 ? accounts.map(a => a.username) : [...syncOptions.syncAccounts];
+    const updated = current.includes(username)
+      ? current.filter(u => u !== username)
+      : [...current, username];
+    const finalAccounts = updated.length === accounts.length ? [] : updated;
+    setSyncOptions(prev => ({ ...prev, syncAccounts: finalAccounts }));
+    await syncService.setSyncOptions({ syncAccounts: finalAccounts });
+  };
+
+  const getSyncAccountLabel = () => {
+    if (syncOptions.syncAccounts.length === 0) return 'All accounts';
+    if (syncOptions.syncAccounts.length === 1) return `${syncOptions.syncAccounts[0]}@duck.com`;
+    return `${syncOptions.syncAccounts.length} accounts selected`;
+  };
+
+  const isAccountSyncSelected = (username: string) => {
+    return syncOptions.syncAccounts.length === 0 || syncOptions.syncAccounts.includes(username);
   };
 
   const handleRefreshSync = async () => {
@@ -466,18 +514,11 @@ export const Settings = ({ onBack }: SettingsProps) => {
           <h2>
             <MdSync size={20} style={{ marginRight: '8px' }} />
             Sync
-            <WarningIcon>
-              <MdWarning size={16} />
-              <WarningTooltip>
-                This is currently an experimental feature. Make sure to backup your current addresses in case of data loss!
-              </WarningTooltip>
-            </WarningIcon>
-            <ExperimentalBadge>EXPERIMENTAL</ExperimentalBadge>
           </h2>
           <SyncToggleSwitch>
             <SyncToggleInput
               type="checkbox"
-              checked={syncEnabled}
+              checked={syncOptions.enabled}
               onChange={(e) => handleSyncToggle(e.target.checked)}
               disabled={loading.sync}
             />
@@ -485,28 +526,105 @@ export const Settings = ({ onBack }: SettingsProps) => {
           </SyncToggleSwitch>
         </SectionHeader>
 
-        {syncEnabled && syncStats && (
-          <SyncStatsContainer>
-            <SyncStatRow>
-              <div>
-                <strong>Status:</strong> {syncStats.lastSync ? `Last synced ${new Date(syncStats.lastSync).toLocaleString()}` : 'Never synced'}
-              </div>
-              <SyncStatValue>
-                <RefreshIconButton
-                  onClick={handleRefreshSync}
-                  disabled={loading.refreshSync}
-                  title="Refresh"
+        {syncOptions.enabled && (
+          <>
+            {accounts.length > 1 && (
+              <DropdownWrapper ref={syncDropdownRef} style={{ marginBottom: '12px' }}>
+                <DropdownTrigger
+                  type="button"
+                  onClick={() => setSyncAccountDropdownOpen(prev => !prev)}
+                  data-open={syncAccountDropdownOpen}
                 >
-                  <MdRefresh size={16} />
-                </RefreshIconButton>
-              </SyncStatValue>
-            </SyncStatRow>
-            <SyncStatRow>
-              <div>
-                <strong>Storage used:</strong> {(syncStats.bytesInUse / 1024).toFixed(2)} KB / {(syncStats.quotaBytes / 1024).toFixed(0)} KB ({syncStats.percentUsed.toFixed(1)}%)
-              </div>
-            </SyncStatRow>
-          </SyncStatsContainer>
+                  {getSyncAccountLabel()}
+                  <MdKeyboardArrowDown size={20} />
+                </DropdownTrigger>
+                {syncAccountDropdownOpen && (
+                  <DropdownMenu>
+                    {accounts.map(account => (
+                      <DropdownItem key={account.username}>
+                        <input
+                          type="checkbox"
+                          checked={isAccountSyncSelected(account.username)}
+                          onChange={() => handleSyncAccountsChange(account.username)}
+                        />
+                        {account.username}@duck.com
+                        {account.username === currentAccount && (
+                          <SyncOptionHint>(current)</SyncOptionHint>
+                        )}
+                      </DropdownItem>
+                    ))}
+                  </DropdownMenu>
+                )}
+              </DropdownWrapper>
+            )}
+
+            <SyncOptionsContainer>
+              <SyncOptionsTitle>Sync Options</SyncOptionsTitle>
+              <SyncOptionRow>
+                <SyncToggleSwitch>
+                  <SyncToggleInput
+                    type="checkbox"
+                    checked={syncOptions.addresses}
+                    onChange={(e) => handleSyncOptionChange('addresses', e.target.checked)}
+                  />
+                  <SyncToggleSlider />
+                </SyncToggleSwitch>
+                Addresses
+              </SyncOptionRow>
+              <SyncOptionRow>
+                <SyncToggleSwitch>
+                  <SyncToggleInput
+                    type="checkbox"
+                    checked={syncOptions.reverseAliases}
+                    onChange={(e) => handleSyncOptionChange('reverseAliases', e.target.checked)}
+                  />
+                  <SyncToggleSlider />
+                </SyncToggleSwitch>
+                Reverse Aliases
+              </SyncOptionRow>
+              <SyncOptionRow>
+                <SyncToggleSwitch>
+                  <SyncToggleInput
+                    type="checkbox"
+                    checked={syncOptions.session}
+                    onChange={(e) => handleSyncOptionChange('session', e.target.checked)}
+                  />
+                  <SyncToggleSlider />
+                </SyncToggleSwitch>
+                Session Data
+                <SyncOptionHint>(login data & settings)</SyncOptionHint>
+              </SyncOptionRow>
+              {syncOptions.session && (
+                <div style={{ marginLeft: '56px', marginTop: '4px', fontSize: '12px', color: '#ff9f19' }}>
+                  Session data includes your access tokens. They are encrypted by Chrome during sync but stored in your Google account.
+                </div>
+              )}
+            </SyncOptionsContainer>
+
+            {syncStats && (
+              <SyncStatsContainer>
+                <SyncStatRow>
+                  <div>
+                    <strong>Status:</strong> {syncStats.lastSync ? `Last synced ${new Date(syncStats.lastSync).toLocaleString()}` : 'Never synced'}
+                  </div>
+                  <SyncStatValue>
+                    <RefreshIconButton
+                      onClick={handleRefreshSync}
+                      disabled={loading.refreshSync}
+                      title="Refresh"
+                    >
+                      <MdRefresh size={16} />
+                    </RefreshIconButton>
+                  </SyncStatValue>
+                </SyncStatRow>
+                <SyncStatRow>
+                  <div>
+                    <strong>Storage used:</strong> {(syncStats.bytesInUse / 1024).toFixed(2)} KB / {(syncStats.quotaBytes / 1024).toFixed(0)} KB ({syncStats.percentUsed.toFixed(1)}%)
+                  </div>
+                </SyncStatRow>
+              </SyncStatsContainer>
+            )}
+          </>
         )}
       </Section>
 

@@ -401,7 +401,14 @@ export class StorageService {
       if (duplicateIndex !== -1) {
         const updated = { ...existing[duplicateIndex], alias, timestamp: Date.now(), lastModified: Date.now() };
         const filtered = existing.filter((_, i) => i !== duplicateIndex);
-        await chrome.storage.local.set({ [key]: [updated, ...filtered] });
+        const updatedList = [updated, ...filtered];
+        await chrome.storage.local.set({ [key]: updatedList });
+
+        try {
+          await this.syncService.saveReverseAliasesToSync(username, updatedList);
+        } catch (syncError) {
+          console.error('Sync error (non-fatal):', syncError);
+        }
         return;
       }
 
@@ -414,7 +421,14 @@ export class StorageService {
         username
       };
 
-      await chrome.storage.local.set({ [key]: [newAlias, ...existing] });
+      const updated = [newAlias, ...existing];
+      await chrome.storage.local.set({ [key]: updated });
+
+      try {
+        await this.syncService.saveReverseAliasesToSync(username, updated);
+      } catch (syncError) {
+        console.error('Sync error (non-fatal):', syncError);
+      }
     } catch (error) {
       console.error('Error saving reverse alias:', error);
     }
@@ -426,6 +440,13 @@ export class StorageService {
       if (!username) return [];
 
       const key = `reverse_aliases_${username}`;
+
+      const syncAliases = await this.syncService.getReverseAliasesFromSync(username);
+      if (syncAliases !== null && syncAliases.length > 0) {
+        await chrome.storage.local.set({ [key]: syncAliases });
+        return syncAliases as ReverseAlias[];
+      }
+
       const result = await chrome.storage.local.get(key);
       return result[key] || [];
     } catch (error) {
@@ -450,6 +471,13 @@ export class StorageService {
       );
 
       await chrome.storage.local.set({ [key]: updated });
+
+      try {
+        await this.syncService.saveReverseAliasesToSync(username, updated);
+      } catch (syncError) {
+        console.error('Sync error (non-fatal):', syncError);
+      }
+
       return true;
     } catch (error) {
       console.error('Error updating reverse alias notes:', error);
@@ -473,6 +501,13 @@ export class StorageService {
       );
 
       await chrome.storage.local.set({ [key]: updated });
+
+      try {
+        await this.syncService.saveReverseAliasesToSync(username, updated);
+      } catch (syncError) {
+        console.error('Sync error (non-fatal):', syncError);
+      }
+
       return true;
     } catch (error) {
       console.error('Error updating reverse alias tags:', error);
@@ -491,6 +526,13 @@ export class StorageService {
 
       const filtered = aliases.filter(a => a.recipientEmail !== recipientEmail);
       await chrome.storage.local.set({ [key]: filtered });
+
+      try {
+        await this.syncService.saveReverseAliasesToSync(username, filtered);
+      } catch (syncError) {
+        console.error('Sync error (non-fatal):', syncError);
+      }
+
       return true;
     } catch (error) {
       console.error('Error deleting reverse alias:', error);
@@ -505,6 +547,13 @@ export class StorageService {
 
       const key = `reverse_aliases_${username}`;
       await chrome.storage.local.set({ [key]: [] });
+
+      try {
+        await this.syncService.saveReverseAliasesToSync(username, []);
+      } catch (syncError) {
+        console.error('Sync error (non-fatal):', syncError);
+      }
+
       return true;
     } catch (error) {
       console.error('Error clearing reverse aliases:', error);

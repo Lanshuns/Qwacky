@@ -1,24 +1,133 @@
 import { errorMessage } from '../utils/safeOps';
+import { UserData } from '../types';
 
 interface Address {
   value: string;
   timestamp: number;
   lastModified?: number;
   notes?: string;
+  tags?: string[];
   username?: string;
 }
 
+interface ReverseAliasSync {
+  recipientEmail: string;
+  alias: string;
+  timestamp: number;
+  lastModified?: number;
+  notes?: string;
+  tags?: string[];
+  username: string;
+}
+
+export interface SyncOptions {
+  enabled: boolean;
+  addresses: boolean;
+  reverseAliases: boolean;
+  session: boolean;
+  syncAccounts: string[];
+}
+
+interface SessionSyncData {
+  accounts: Array<{ userData: UserData; username: string; lastUsed: number }>;
+  currentAccount: string;
+  settings: {
+    hideUserInfo: boolean;
+    hideGeneratedAddresses: boolean;
+    hideReverseAliases: boolean;
+    contextMenuEnabled: boolean;
+    themeMode: string;
+  };
+}
+
+const DEFAULT_SYNC_OPTIONS: SyncOptions = {
+  enabled: false,
+  addresses: true,
+  reverseAliases: true,
+  session: false,
+  syncAccounts: [],
+};
+
 export class SyncService {
+  private static SYNC_OPTIONS_KEY = 'syncOptions';
   private static SYNC_ENABLED_KEY = 'syncEnabled';
   private static SYNC_LAST_SYNC_KEY = 'lastSyncTime';
   private static SESSION_CACHE_PREFIX = 'sync_cache_';
   private static COMPRESSION_THRESHOLD = 4096;
+  private static DEBOUNCE_MS = 2000;
+
+  private syncLock: Promise<void> = Promise.resolve();
+  private pendingWrites = new Map<string, {
+    data: any[];
+    timer: ReturnType<typeof setTimeout>;
+  }>();
 
   constructor() {
   }
+
+  private acquireLock(): Promise<() => void> {
+    let release: () => void;
+    const newLock = new Promise<void>(resolve => { release = resolve; });
+    const waitForPrev = this.syncLock;
+    this.syncLock = newLock;
+    return waitForPrev.then(() => release!);
+  }
+
+  private validateAddresses(data: any[]): Address[] {
+    if (!Array.isArray(data)) return [];
+    return data.filter(item =>
+      item &&
+      typeof item.value === 'string' &&
+      typeof item.timestamp === 'number'
+    );
+  }
+
+  private validateReverseAliases(data: any[]): ReverseAliasSync[] {
+    if (!Array.isArray(data)) return [];
+    return data.filter(item =>
+      item &&
+      typeof item.recipientEmail === 'string' &&
+      typeof item.alias === 'string' &&
+      typeof item.timestamp === 'number'
+    );
+  }
+
+  async getSyncOptions(): Promise<SyncOptions> {
+    const result = await chrome.storage.local.get([SyncService.SYNC_OPTIONS_KEY, SyncService.SYNC_ENABLED_KEY]);
+
+    if (result[SyncService.SYNC_OPTIONS_KEY]) {
+      return { ...DEFAULT_SYNC_OPTIONS, ...result[SyncService.SYNC_OPTIONS_KEY] };
+    }
+
+    if (result[SyncService.SYNC_ENABLED_KEY] !== undefined) {
+      const migrated: SyncOptions = {
+        ...DEFAULT_SYNC_OPTIONS,
+        enabled: result[SyncService.SYNC_ENABLED_KEY],
+      };
+      await chrome.storage.local.set({ [SyncService.SYNC_OPTIONS_KEY]: migrated });
+      await chrome.storage.local.remove(SyncService.SYNC_ENABLED_KEY);
+      return migrated;
+    }
+
+    return { ...DEFAULT_SYNC_OPTIONS };
+  }
+
+  async setSyncOptions(options: Partial<SyncOptions>): Promise<void> {
+    const current = await this.getSyncOptions();
+    const updated = { ...current, ...options };
+    await chrome.storage.local.set({ [SyncService.SYNC_OPTIONS_KEY]: updated });
+  }
+
+  private async isAccountSyncEnabled(username: string): Promise<boolean> {
+    const options = await this.getSyncOptions();
+    if (!options.enabled) return false;
+    if (options.syncAccounts.length === 0) return true;
+    return options.syncAccounts.includes(username);
+  }
+
   private async compressData(data: string): Promise<string> {
     try {
-      if (!('CompressionStream' in window)) {
+      if (typeof CompressionStream === 'undefined') {
         console.warn('CompressionStream not available, storing uncompressed');
         return data;
       }
@@ -67,7 +176,7 @@ export class SyncService {
     }
 
     try {
-      if (!('DecompressionStream' in window)) {
+      if (typeof DecompressionStream === 'undefined') {
         console.error('DecompressionStream not available');
         return data;
       }
@@ -141,16 +250,57 @@ export class SyncService {
   }
 
   async isSyncEnabled(): Promise<boolean> {
-    const result = await chrome.storage.local.get(SyncService.SYNC_ENABLED_KEY);
-    return result[SyncService.SYNC_ENABLED_KEY] || false;
+    const options = await this.getSyncOptions();
+    return options.enabled;
   }
 
-  async setSyncEnabled(enabled: boolean): Promise<void> {
-    await chrome.storage.local.set({ [SyncService.SYNC_ENABLED_KEY]: enabled });
+  async setSyncEnabled(enabled: boolean): Promise<{ success: boolean; message: string }> {
+    await this.setSyncOptions({ enabled });
 
     if (enabled) {
-      await this.migrateToSync();
+      return await this.migrateToSync();
     }
+
+    return { success: true, message: 'Sync disabled' };
+  }
+
+  private async migrateDataToSync(localData: any[], syncKey: string, mergeFn: (local: any[], sync: any[]) => Promise<any[]>, validateFn: (data: any[]) => any[]): Promise<{ count: number; error?: string }> {
+    const dataWithTimestamp = localData.map((item: any) => ({
+      ...item,
+      lastModified: item.lastModified || item.timestamp,
+    }));
+
+    const syncResult = await chrome.storage.sync.get(syncKey);
+    let syncData: any[] = [];
+
+    if (syncResult[syncKey]) {
+      const decompressed = await this.decompressData(syncResult[syncKey]);
+      try {
+        syncData = validateFn(JSON.parse(decompressed));
+      } catch {
+        syncData = [];
+      }
+    }
+
+    const merged = await mergeFn(dataWithTimestamp, syncData);
+
+    const mergedJson = JSON.stringify(merged);
+    const finalData = mergedJson.length > SyncService.COMPRESSION_THRESHOLD
+      ? await this.compressData(mergedJson)
+      : mergedJson;
+
+    const dataSize = new Blob([finalData]).size;
+    if (dataSize > 8000) {
+      return { count: 0, error: `Data too large (${Math.round(dataSize / 1024)}KB). Maximum is 8KB per account.` };
+    }
+
+    await chrome.storage.sync.set({
+      [syncKey]: finalData,
+      [SyncService.SYNC_LAST_SYNC_KEY]: Date.now(),
+    });
+
+    await this.saveToSessionCache(syncKey, merged);
+    return { count: merged.length };
   }
 
   async migrateToSync(): Promise<{ success: boolean; message: string }> {
@@ -160,77 +310,59 @@ export class SyncService {
         return { success: false, message: 'No user logged in' };
       }
 
-      const accountKey = `addresses_${username}`;
-      
-      const localResult = await chrome.storage.local.get(accountKey);
-      const localAddresses = localResult[accountKey] || [];
+      const options = await this.getSyncOptions();
+      const parts: string[] = [];
 
-      if (localAddresses.length === 0) {
-        await chrome.storage.sync.set({ [SyncService.SYNC_LAST_SYNC_KEY]: Date.now() });
-        return { success: true, message: 'No addresses to migrate' };
-      }
+      if (options.addresses) {
+        const accountKey = `addresses_${username}`;
+        const localResult = await chrome.storage.local.get(accountKey);
+        const localAddresses = localResult[accountKey] || [];
 
-      const addressesWithTimestamp = localAddresses.map((addr: Address) => ({
-        ...addr,
-        lastModified: addr.lastModified || addr.timestamp
-      }));
+        if (localAddresses.length > 0) {
+          const result = await this.migrateDataToSync(
+            localAddresses, accountKey,
+            (l: any[], s: any[]) => this.mergeAddresses(l, s),
+            (d: any[]) => this.validateAddresses(d)
+          );
+          if (result.error) return { success: false, message: result.error };
+          parts.push(`${result.count} addresses`);
+        }
 
-      const jsonData = JSON.stringify(addressesWithTimestamp);
-      const originalSize = new Blob([jsonData]).size;
-
-      let dataToStore = jsonData;
-      let compressed = false;
-      
-      if (originalSize > SyncService.COMPRESSION_THRESHOLD) {
-        dataToStore = await this.compressData(jsonData);
-        compressed = true;
-        const compressedSize = new Blob([dataToStore]).size;
-        console.log(`Compressed: ${originalSize}B → ${compressedSize}B (${Math.round((1 - compressedSize/originalSize) * 100)}% reduction)`);
-      }
-
-      const dataSize = new Blob([dataToStore]).size;
-      if (dataSize > 8000) {
-        return { 
-          success: false, 
-          message: `Data too large (${Math.round(dataSize / 1024)}KB). Maximum is 8KB per account.` 
-        };
-      }
-
-      const syncResult = await chrome.storage.sync.get(accountKey);
-      let syncAddresses = [];
-      
-      if (syncResult[accountKey]) {
-        const syncData = syncResult[accountKey];
-        const decompressed = await this.decompressData(syncData);
-        try {
-          syncAddresses = JSON.parse(decompressed);
-        } catch {
-          syncAddresses = [];
+        const localData = await chrome.storage.local.get('user_data');
+        if (localData.user_data?.stats?.addresses_generated) {
+          await this.syncTotalCount(localData.user_data.stats.addresses_generated);
         }
       }
 
-      const mergedAddresses = await this.mergeAddresses(localAddresses, syncAddresses);
+      if (options.reverseAliases) {
+        const aliasKey = `reverse_aliases_${username}`;
+        const localResult = await chrome.storage.local.get(aliasKey);
+        const localAliases = localResult[aliasKey] || [];
 
-      const mergedJson = JSON.stringify(mergedAddresses);
-      const finalData = mergedJson.length > SyncService.COMPRESSION_THRESHOLD
-        ? await this.compressData(mergedJson)
-        : mergedJson;
-
-      await chrome.storage.sync.set({ 
-        [accountKey]: finalData,
-        [SyncService.SYNC_LAST_SYNC_KEY]: Date.now()
-      });
-
-      await this.saveToSessionCache(accountKey, mergedAddresses);
-
-      const localData = await chrome.storage.local.get('user_data');
-      if (localData.user_data?.stats?.addresses_generated) {
-        await this.syncTotalCount(localData.user_data.stats.addresses_generated);
+        if (localAliases.length > 0) {
+          const result = await this.migrateDataToSync(
+            localAliases, aliasKey,
+            (l: any[], s: any[]) => this.mergeReverseAliases(l, s),
+            (d: any[]) => this.validateReverseAliases(d)
+          );
+          if (result.error) return { success: false, message: result.error };
+          parts.push(`${result.count} reverse aliases`);
+        }
       }
 
-      return { 
-        success: true, 
-        message: `Successfully synced ${mergedAddresses.length} addresses${compressed ? ' (compressed)' : ''}` 
+      if (options.session) {
+        await this.saveSessionToSync();
+        parts.push('session data');
+      }
+
+      if (parts.length === 0) {
+        await chrome.storage.sync.set({ [SyncService.SYNC_LAST_SYNC_KEY]: Date.now() });
+        return { success: true, message: 'No data to migrate' };
+      }
+
+      return {
+        success: true,
+        message: `Successfully synced ${parts.join(', ')}`,
       };
     } catch (error: unknown) {
       console.error('Migration error:', error);
@@ -238,13 +370,13 @@ export class SyncService {
       if (errorMessage(error).includes('QUOTA_BYTES')) {
         return {
           success: false,
-          message: 'Storage quota exceeded. Try reducing the number of addresses.'
+          message: 'Storage quota exceeded. Try reducing the amount of synced data.',
         };
       }
 
       return {
         success: false,
-        message: errorMessage(error) || 'Migration failed'
+        message: errorMessage(error) || 'Migration failed',
       };
     }
   }
@@ -266,11 +398,12 @@ export class SyncService {
 
         if (incomingMod > existingMod) {
           merged.set(addr.value, addr);
-        } else if (incomingMod === existingMod && addr.notes && addr.notes !== existing.notes) {
-          merged.set(addr.value, {
-            ...existing,
-            notes: `${existing.notes || ''} | ${addr.notes}`.trim().replace(/^\| /, '')
-          });
+        } else if (incomingMod === existingMod) {
+          const mergedNotes = (addr.notes && addr.notes !== existing.notes)
+            ? `${existing.notes || ''} | ${addr.notes}`.trim().replace(/^\| /, '')
+            : existing.notes;
+          const mergedTags = [...new Set([...(existing.tags || []), ...(addr.tags || [])])];
+          merged.set(addr.value, { ...existing, notes: mergedNotes, tags: mergedTags.length > 0 ? mergedTags : existing.tags });
         }
       }
     });
@@ -279,8 +412,8 @@ export class SyncService {
   }
 
   async saveAddressesToSync(username: string, addresses: Address[]): Promise<void> {
-    const syncEnabled = await this.isSyncEnabled();
-    if (!syncEnabled) {
+    const options = await this.getSyncOptions();
+    if (!options.enabled || !options.addresses || !await this.isAccountSyncEnabled(username)) {
       return;
     }
 
@@ -291,33 +424,58 @@ export class SyncService {
       lastModified: addr.lastModified || Date.now()
     }));
 
+    const pending = this.pendingWrites.get(accountKey);
+    if (pending) {
+      clearTimeout(pending.timer);
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(async () => {
+        this.pendingWrites.delete(accountKey);
+        const release = await this.acquireLock();
+        try {
+          await this.executeSyncWrite(accountKey, addressesWithTimestamp);
+          resolve();
+        } catch (error) {
+          reject(error);
+        } finally {
+          release();
+        }
+      }, SyncService.DEBOUNCE_MS);
+
+      this.pendingWrites.set(accountKey, { data: addressesWithTimestamp, timer });
+    });
+  }
+
+  private async executeSyncWrite(accountKey: string, data: any[]): Promise<void> {
     try {
-      const jsonData = JSON.stringify(addressesWithTimestamp);
+      const jsonData = JSON.stringify(data);
       const dataToStore = jsonData.length > SyncService.COMPRESSION_THRESHOLD
         ? await this.compressData(jsonData)
         : jsonData;
 
-      await chrome.storage.sync.set({ 
+      await chrome.storage.sync.set({
         [accountKey]: dataToStore,
         [SyncService.SYNC_LAST_SYNC_KEY]: Date.now()
       });
 
-      await this.saveToSessionCache(accountKey, addressesWithTimestamp);
+      await this.saveToSessionCache(accountKey, data);
     } catch (error: unknown) {
       console.error('Sync save error:', error);
 
       if (errorMessage(error).includes('QUOTA_BYTES')) {
         await this.setSyncEnabled(false);
+        chrome.runtime.sendMessage({ action: 'syncAutoDisabled', reason: 'quota_exceeded' }).catch(() => {});
         throw new Error('Sync quota exceeded. Sync has been disabled.');
       }
-      
+
       throw error;
     }
   }
 
   async getAddressesFromSync(username: string): Promise<Address[] | null> {
-    const syncEnabled = await this.isSyncEnabled();
-    if (!syncEnabled) {
+    const options = await this.getSyncOptions();
+    if (!options.enabled || !options.addresses || !await this.isAccountSyncEnabled(username)) {
       return null;
     }
 
@@ -338,9 +496,9 @@ export class SyncService {
 
       const data = result[accountKey];
       const jsonData = await this.decompressData(data);
-      let addresses;
+      let addresses: Address[];
       try {
-        addresses = JSON.parse(jsonData);
+        addresses = this.validateAddresses(JSON.parse(jsonData));
       } catch {
         addresses = [];
       }
@@ -367,58 +525,12 @@ export class SyncService {
       return;
     }
 
-    const jsonData = await this.decompressData(newValue);
-    let syncAddresses;
+    const release = await this.acquireLock();
     try {
-      syncAddresses = JSON.parse(jsonData);
-    } catch {
-      syncAddresses = [];
-    }
-
-    const localResult = await chrome.storage.local.get(accountKey);
-    const localAddresses = localResult[accountKey] || [];
-
-    const mergedAddresses = await this.mergeAddresses(localAddresses, syncAddresses);
-
-    await chrome.storage.local.set({ [accountKey]: mergedAddresses });
-
-    await this.saveToSessionCache(accountKey, mergedAddresses);
-
-    chrome.runtime.sendMessage({
-      action: 'syncAddressesUpdated',
-      addresses: mergedAddresses
-    }).catch((err: unknown) => {
-      const msg = errorMessage(err);
-      if (!msg.includes('Receiving end does not exist')) {
-        console.error('Message send failed:', msg);
-      }
-    });
-  }
-
-  async pullFromSync(): Promise<{ success: boolean; message: string }> {
-    const syncEnabled = await this.isSyncEnabled();
-    if (!syncEnabled) {
-      return { success: false, message: 'Sync is not enabled' };
-    }
-
-    try {
-      const username = await this.getCurrentUsername();
-      if (!username) {
-        return { success: false, message: 'No user logged in' };
-      }
-
-      const accountKey = `addresses_${username}`;
-
-      const syncResult = await chrome.storage.sync.get(accountKey);
-      
-      if (!syncResult[accountKey]) {
-        return { success: true, message: 'No synced data found' };
-      }
-
-      const jsonData = await this.decompressData(syncResult[accountKey]);
-      let syncAddresses;
+      const jsonData = await this.decompressData(newValue);
+      let syncAddresses: Address[];
       try {
-        syncAddresses = JSON.parse(jsonData);
+        syncAddresses = this.validateAddresses(JSON.parse(jsonData));
       } catch {
         syncAddresses = [];
       }
@@ -432,37 +544,6 @@ export class SyncService {
 
       await this.saveToSessionCache(accountKey, mergedAddresses);
 
-      const localData = await chrome.storage.local.get('user_data');
-      if (localData.user_data?.stats?.addresses_generated) {
-        const syncedCount = await this.syncTotalCount(localData.user_data.stats.addresses_generated);
-        
-        if (syncedCount !== localData.user_data.stats.addresses_generated) {
-          localData.user_data.stats.addresses_generated = syncedCount;
-          await chrome.storage.local.set({ user_data: localData.user_data });
-          
-          const username = localData.user_data.user?.username;
-          const result = await chrome.storage.local.get(['accounts', 'currentAccount']);
-          if (username && result.accounts && result.currentAccount === username) {
-            const updatedAccounts = result.accounts.map((acc: any) => {
-              if (acc.username === username) {
-                return {
-                  ...acc,
-                  userData: {
-                    ...acc.userData,
-                    stats: {
-                      ...acc.userData.stats,
-                      addresses_generated: syncedCount
-                    }
-                  }
-                };
-              }
-              return acc;
-            });
-            await chrome.storage.local.set({ accounts: updatedAccounts });
-          }
-        }
-      }
-
       chrome.runtime.sendMessage({
         action: 'syncAddressesUpdated',
         addresses: mergedAddresses
@@ -472,16 +553,427 @@ export class SyncService {
           console.error('Message send failed:', msg);
         }
       });
+    } finally {
+      release();
+    }
+  }
+
+  async mergeReverseAliases(local: ReverseAliasSync[], sync: ReverseAliasSync[]): Promise<ReverseAliasSync[]> {
+    const merged = new Map<string, ReverseAliasSync>();
+
+    [...local, ...sync].forEach(alias => {
+      const existing = merged.get(alias.recipientEmail);
+
+      if (!existing) {
+        merged.set(alias.recipientEmail, {
+          ...alias,
+          lastModified: alias.lastModified || alias.timestamp,
+        });
+      } else {
+        const existingMod = existing.lastModified || existing.timestamp;
+        const incomingMod = alias.lastModified || alias.timestamp;
+
+        if (incomingMod > existingMod) {
+          merged.set(alias.recipientEmail, alias);
+        } else if (incomingMod === existingMod) {
+          const mergedNotes = (alias.notes && alias.notes !== existing.notes)
+            ? `${existing.notes || ''} | ${alias.notes}`.trim().replace(/^\| /, '')
+            : existing.notes;
+          const mergedTags = [...new Set([...(existing.tags || []), ...(alias.tags || [])])];
+          merged.set(alias.recipientEmail, {
+            ...existing,
+            notes: mergedNotes,
+            tags: mergedTags.length > 0 ? mergedTags : existing.tags,
+          });
+        }
+      }
+    });
+
+    return Array.from(merged.values()).sort((a, b) => b.timestamp - a.timestamp);
+  }
+
+  async saveReverseAliasesToSync(username: string, aliases: ReverseAliasSync[]): Promise<void> {
+    const options = await this.getSyncOptions();
+    if (!options.enabled || !options.reverseAliases || !await this.isAccountSyncEnabled(username)) {
+      return;
+    }
+
+    const accountKey = `reverse_aliases_${username}`;
+
+    const aliasesWithTimestamp = aliases.map(alias => ({
+      ...alias,
+      lastModified: alias.lastModified || Date.now(),
+    }));
+
+    const pending = this.pendingWrites.get(accountKey);
+    if (pending) {
+      clearTimeout(pending.timer);
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(async () => {
+        this.pendingWrites.delete(accountKey);
+        const release = await this.acquireLock();
+        try {
+          await this.executeSyncWrite(accountKey, aliasesWithTimestamp);
+          resolve();
+        } catch (error) {
+          reject(error);
+        } finally {
+          release();
+        }
+      }, SyncService.DEBOUNCE_MS);
+
+      this.pendingWrites.set(accountKey, { data: aliasesWithTimestamp, timer });
+    });
+  }
+
+  async getReverseAliasesFromSync(username: string): Promise<ReverseAliasSync[] | null> {
+    const options = await this.getSyncOptions();
+    if (!options.enabled || !options.reverseAliases || !await this.isAccountSyncEnabled(username)) {
+      return null;
+    }
+
+    const accountKey = `reverse_aliases_${username}`;
+
+    const cached = await this.getFromSessionCache(accountKey);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      const result = await chrome.storage.sync.get(accountKey);
+      if (!result[accountKey]) {
+        return [];
+      }
+
+      const jsonData = await this.decompressData(result[accountKey]);
+      let aliases: ReverseAliasSync[];
+      try {
+        aliases = this.validateReverseAliases(JSON.parse(jsonData));
+      } catch {
+        aliases = [];
+      }
+
+      await this.saveToSessionCache(accountKey, aliases);
+      return aliases;
+    } catch (error) {
+      console.error('Sync get reverse aliases error:', error);
+      return null;
+    }
+  }
+
+  async handleReverseAliasSyncChange(accountKey: string, newValue: any): Promise<void> {
+    const options = await this.getSyncOptions();
+    if (!options.enabled || !options.reverseAliases) {
+      return;
+    }
+
+    const username = accountKey.replace('reverse_aliases_', '');
+    const currentUsername = await this.getCurrentUsername();
+
+    if (username !== currentUsername) {
+      return;
+    }
+
+    const release = await this.acquireLock();
+    try {
+      const jsonData = await this.decompressData(newValue);
+      let syncAliases: ReverseAliasSync[];
+      try {
+        syncAliases = this.validateReverseAliases(JSON.parse(jsonData));
+      } catch {
+        syncAliases = [];
+      }
+
+      const localResult = await chrome.storage.local.get(accountKey);
+      const localAliases = localResult[accountKey] || [];
+
+      const mergedAliases = await this.mergeReverseAliases(localAliases, syncAliases);
+
+      await chrome.storage.local.set({ [accountKey]: mergedAliases });
+      await this.saveToSessionCache(accountKey, mergedAliases);
+
+      chrome.runtime.sendMessage({
+        action: 'syncReverseAliasesUpdated',
+        reverseAliases: mergedAliases,
+      }).catch((err: unknown) => {
+        const msg = errorMessage(err);
+        if (!msg.includes('Receiving end does not exist')) {
+          console.error('Message send failed:', msg);
+        }
+      });
+    } finally {
+      release();
+    }
+  }
+
+  async saveSessionToSync(): Promise<void> {
+    const options = await this.getSyncOptions();
+    if (!options.enabled || !options.session) {
+      return;
+    }
+
+    try {
+      const result = await chrome.storage.local.get(['accounts', 'currentAccount', 'hide_user_info', 'hide_generated_addresses', 'hide_reverse_aliases', 'contextMenuEnabled']);
+      const accounts: Array<{ userData: UserData; username: string; lastUsed: number }> = result.accounts || [];
+
+      const filteredAccounts = options.syncAccounts.length > 0
+        ? accounts.filter(acc => options.syncAccounts.includes(acc.username))
+        : accounts;
+
+      if (filteredAccounts.length === 0) return;
+
+      const sessionData: SessionSyncData = {
+        accounts: filteredAccounts,
+        currentAccount: result.currentAccount || '',
+        settings: {
+          hideUserInfo: result.hide_user_info || false,
+          hideGeneratedAddresses: result.hide_generated_addresses || false,
+          hideReverseAliases: result.hide_reverse_aliases || false,
+          contextMenuEnabled: result.contextMenuEnabled || false,
+          themeMode: localStorage.getItem('themeMode') || 'system',
+        },
+      };
+
+      const jsonData = JSON.stringify(sessionData);
+      const dataToStore = jsonData.length > SyncService.COMPRESSION_THRESHOLD
+        ? await this.compressData(jsonData)
+        : jsonData;
+
+      await chrome.storage.sync.set({
+        session_data: dataToStore,
+        [SyncService.SYNC_LAST_SYNC_KEY]: Date.now(),
+      });
+    } catch (error) {
+      console.error('Session sync save error:', error);
+    }
+  }
+
+  async getSessionFromSync(): Promise<SessionSyncData | null> {
+    const options = await this.getSyncOptions();
+    if (!options.enabled || !options.session) {
+      return null;
+    }
+
+    try {
+      const result = await chrome.storage.sync.get('session_data');
+      if (!result.session_data) return null;
+
+      const jsonData = await this.decompressData(result.session_data);
+      try {
+        const parsed = JSON.parse(jsonData);
+        if (parsed && Array.isArray(parsed.accounts)) {
+          return parsed as SessionSyncData;
+        }
+      } catch {}
+      return null;
+    } catch (error) {
+      console.error('Session sync get error:', error);
+      return null;
+    }
+  }
+
+  async handleSessionSyncChange(newValue: any): Promise<void> {
+    const options = await this.getSyncOptions();
+    if (!options.enabled || !options.session) {
+      return;
+    }
+
+    try {
+      const jsonData = await this.decompressData(newValue);
+      let sessionData: SessionSyncData;
+      try {
+        sessionData = JSON.parse(jsonData);
+        if (!sessionData || !Array.isArray(sessionData.accounts)) return;
+      } catch {
+        return;
+      }
+
+      const localResult = await chrome.storage.local.get('accounts');
+      const localAccounts: Array<{ username: string }> = localResult.accounts || [];
+      const localUsernames = new Set(localAccounts.map(a => a.username));
+
+      const newAccounts = sessionData.accounts.filter(a => !localUsernames.has(a.username));
+
+      if (newAccounts.length > 0) {
+        chrome.runtime.sendMessage({
+          action: 'syncSessionAvailable',
+          newAccounts: newAccounts.map(a => a.username),
+          sessionData,
+        }).catch(() => {});
+      }
+    } catch (error) {
+      console.error('Session sync change error:', error);
+    }
+  }
+
+  async restoreSessionFromSync(sessionData: SessionSyncData): Promise<{ restored: number }> {
+    const localResult = await chrome.storage.local.get(['accounts', 'currentAccount']);
+    const localAccounts: Array<{ userData: UserData; username: string; lastUsed: number }> = localResult.accounts || [];
+    const localMap = new Map(localAccounts.map(a => [a.username, a]));
+
+    let restored = 0;
+    for (const syncAccount of sessionData.accounts) {
+      const existing = localMap.get(syncAccount.username);
+      if (!existing) {
+        localMap.set(syncAccount.username, syncAccount);
+        restored++;
+      } else if (syncAccount.lastUsed > existing.lastUsed) {
+        localMap.set(syncAccount.username, syncAccount);
+      }
+    }
+
+    const mergedAccounts = Array.from(localMap.values());
+    const updates: Record<string, any> = { accounts: mergedAccounts };
+
+    if (!localResult.currentAccount && sessionData.currentAccount) {
+      updates.currentAccount = sessionData.currentAccount;
+      const currentAcc = localMap.get(sessionData.currentAccount);
+      if (currentAcc) {
+        updates.user_data = currentAcc.userData;
+        updates.access_token = currentAcc.userData.user.access_token;
+        updates.loginState = 'dashboard';
+      }
+    }
+
+    await chrome.storage.local.set(updates);
+
+    if (sessionData.settings) {
+      await chrome.storage.local.set({
+        hide_user_info: sessionData.settings.hideUserInfo,
+        hide_generated_addresses: sessionData.settings.hideGeneratedAddresses,
+        hide_reverse_aliases: sessionData.settings.hideReverseAliases,
+        contextMenuEnabled: sessionData.settings.contextMenuEnabled,
+      });
+      if (sessionData.settings.themeMode) {
+        localStorage.setItem('themeMode', JSON.stringify(sessionData.settings.themeMode));
+      }
+    }
+
+    return { restored };
+  }
+
+  async pullFromSync(): Promise<{ success: boolean; message: string }> {
+    const options = await this.getSyncOptions();
+    if (!options.enabled) {
+      return { success: false, message: 'Sync is not enabled' };
+    }
+
+    try {
+      const username = await this.getCurrentUsername();
+      if (!username) {
+        return { success: false, message: 'No user logged in' };
+      }
+
+      const parts: string[] = [];
+
+      if (options.addresses && await this.isAccountSyncEnabled(username)) {
+        const accountKey = `addresses_${username}`;
+        const syncResult = await chrome.storage.sync.get(accountKey);
+
+        if (syncResult[accountKey]) {
+          const jsonData = await this.decompressData(syncResult[accountKey]);
+          let syncAddresses: Address[];
+          try {
+            syncAddresses = this.validateAddresses(JSON.parse(jsonData));
+          } catch {
+            syncAddresses = [];
+          }
+
+          const localResult = await chrome.storage.local.get(accountKey);
+          const localAddresses = localResult[accountKey] || [];
+          const mergedAddresses = await this.mergeAddresses(localAddresses, syncAddresses);
+
+          await chrome.storage.local.set({ [accountKey]: mergedAddresses });
+          await this.saveToSessionCache(accountKey, mergedAddresses);
+
+          const localData = await chrome.storage.local.get('user_data');
+          if (localData.user_data?.stats?.addresses_generated) {
+            const syncedCount = await this.syncTotalCount(localData.user_data.stats.addresses_generated);
+            if (syncedCount !== localData.user_data.stats.addresses_generated) {
+              localData.user_data.stats.addresses_generated = syncedCount;
+              await chrome.storage.local.set({ user_data: localData.user_data });
+
+              const result = await chrome.storage.local.get(['accounts', 'currentAccount']);
+              if (result.accounts && result.currentAccount === username) {
+                const updatedAccounts = result.accounts.map((acc: any) => {
+                  if (acc.username === username) {
+                    return { ...acc, userData: { ...acc.userData, stats: { ...acc.userData.stats, addresses_generated: syncedCount } } };
+                  }
+                  return acc;
+                });
+                await chrome.storage.local.set({ accounts: updatedAccounts });
+              }
+            }
+          }
+
+          chrome.runtime.sendMessage({ action: 'syncAddressesUpdated', addresses: mergedAddresses }).catch((err: unknown) => {
+            const msg = errorMessage(err);
+            if (!msg.includes('Receiving end does not exist')) console.error('Message send failed:', msg);
+          });
+
+          parts.push(`${mergedAddresses.length} addresses`);
+        }
+      }
+
+      if (options.reverseAliases && await this.isAccountSyncEnabled(username)) {
+        const aliasKey = `reverse_aliases_${username}`;
+        const syncResult = await chrome.storage.sync.get(aliasKey);
+
+        if (syncResult[aliasKey]) {
+          const jsonData = await this.decompressData(syncResult[aliasKey]);
+          let syncAliases: ReverseAliasSync[];
+          try {
+            syncAliases = this.validateReverseAliases(JSON.parse(jsonData));
+          } catch {
+            syncAliases = [];
+          }
+
+          const localResult = await chrome.storage.local.get(aliasKey);
+          const localAliases = localResult[aliasKey] || [];
+          const mergedAliases = await this.mergeReverseAliases(localAliases, syncAliases);
+
+          await chrome.storage.local.set({ [aliasKey]: mergedAliases });
+          await this.saveToSessionCache(aliasKey, mergedAliases);
+
+          chrome.runtime.sendMessage({ action: 'syncReverseAliasesUpdated', reverseAliases: mergedAliases }).catch((err: unknown) => {
+            const msg = errorMessage(err);
+            if (!msg.includes('Receiving end does not exist')) console.error('Message send failed:', msg);
+          });
+
+          parts.push(`${mergedAliases.length} reverse aliases`);
+        }
+      }
+
+      if (options.session) {
+        const sessionData = await this.getSessionFromSync();
+        if (sessionData && sessionData.accounts.length > 0) {
+          const localResult = await chrome.storage.local.get('accounts');
+          const localAccounts: Array<{ username: string }> = localResult.accounts || [];
+          const localUsernames = new Set(localAccounts.map(a => a.username));
+          const newAccounts = sessionData.accounts.filter(a => !localUsernames.has(a.username));
+
+          if (newAccounts.length > 0) {
+            chrome.runtime.sendMessage({
+              action: 'syncSessionAvailable',
+              newAccounts: newAccounts.map(a => a.username),
+              sessionData,
+            }).catch(() => {});
+          }
+          parts.push('session data');
+        }
+      }
 
       return {
         success: true,
-        message: `Successfully synced ${mergedAddresses.length} addresses`
+        message: parts.length > 0 ? `Successfully synced ${parts.join(', ')}` : 'No synced data found',
       };
     } catch (error: unknown) {
       console.error('Pull from sync error:', error);
       return {
         success: false,
-        message: errorMessage(error) || 'Failed to pull from sync'
+        message: errorMessage(error) || 'Failed to pull from sync',
       };
     }
   }
@@ -572,14 +1064,15 @@ export class SyncService {
   async clearSyncData(): Promise<void> {
     const allKeys = await chrome.storage.sync.get();
     for (const key of Object.keys(allKeys)) {
-      if (key.startsWith('addresses_')) {
+      if (key.startsWith('addresses_') || key.startsWith('reverse_aliases_')) {
         await this.clearSessionCache(key);
       }
     }
 
     await chrome.storage.sync.clear();
     await chrome.storage.local.remove([
-      SyncService.SYNC_ENABLED_KEY
+      SyncService.SYNC_OPTIONS_KEY,
+      SyncService.SYNC_ENABLED_KEY,
     ]);
   }
 }
