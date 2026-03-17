@@ -2,16 +2,19 @@
   <img src="assets/icons/qwacky.png" alt="Qwacky Logo" width="128" height="128">
 </p>
 
+<p align="center">
+<a href="#why-qwacky">Why Qwacky?</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#download">Download</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#features">Features</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#screenshots">Screenshots</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#security--privacy">Security & Privacy</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#manual-installation">Manual Installation</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#development">Development</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#support-the-project">Support the Project</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#acknowledgments">Acknowledgments</a>
+</p>
+
 # Why Qwacky?
 
-I've been using [DuckDuckGo Email Protection](https://duckduckgo.com/email) service for a while and really appreciate it. However, the requirement to install the full DuckDuckGo extension came with some challenges:
+[DuckDuckGo Email Protection](https://duckduckgo.com/email) is a great service, but using it requires installing the full DuckDuckGo extension, which comes with some limitations:
 
-- You can't disable the tracking protection feature globally
-- You need to manually disable tracking protection for each website
-- The extension changes your default search engine to DuckDuckGo
-- No way to use just the email protection service standalone
+- Tracking protection can only be disabled per website, not globally
+- Your default search engine gets changed to DuckDuckGo
+- No way to use email protection as a standalone feature
 
-That's why I created Qwacky - initially for personal use, but I realized others might face the same issues. As someone who always wanted to contribute to the open-source community with helpful tools, I decided to share this project publicly.
+Qwacky solves this by providing a lightweight, standalone alternative focused entirely on the email protection service, packed with extra features you won't find in the original extension.
 
 ## Download
 
@@ -22,13 +25,14 @@ That's why I created Qwacky - initially for personal use, but I realized others 
 
 ## Features
 - Generate and manage private @duck.com email addresses
-- Copy the generated address to the clipboard
-- Auto-fill and copy addresses in input fields from context menu for a quick address generation
-- Store the generated addresses locally
+- Copy generated addresses to clipboard with one click
+- Auto-fill email fields from context menu or keyboard shortcut (`Alt+Shift+Q`)
+- Reverse alias support to convert any email into a duck.com address for sending
+- Notes and tags for each generated address with search and filtering
+- My Account page to view profile, email stats, and manage forwarding address
 - Multiple accounts support
-- Notes for each generated address
-- Export/import settings (CSV & JSON)
-- And more!
+- Backup and restore with selective account export
+- Cross-device sync for addresses, reverse aliases, and session data
 
 ### Browser Compatibility
 
@@ -122,13 +126,31 @@ npm run build
 npm run build:firefox
 ```
 
-The built extension will be available in the `dist` directory.
+The built extension will be available in `dist_chrome/` or `dist_firefox/` respectively.
 
 > **Note**: For development and temporary installation in Firefox, you can use `about:debugging` method:
 > 1. Go to `about:debugging`
 > 2. Click "This Firefox" in the left sidebar
 > 3. Click "Load Temporary Add-on"
-> 4. Select the `manifest.json` file from the unzipped folder
+> 4. Select the `manifest.json` file from the `dist_firefox/` folder
+
+# Support the Project
+
+There are a few ways you can support Qwacky's development:
+
+- **Star the repository** on GitHub it helps others discover the project
+- **Leave a review** on the [Chrome Web Store](https://chromewebstore.google.com/detail/qwacky/kieehbhdbincplacegpjdkoglfakboeo/reviews) or [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/qwacky/reviews/) it makes a big difference!
+- **Donate via cryptocurrency:**
+
+| Currency | Address |
+|----------|---------|
+| **Bitcoin (BTC)** | `bc1qmmwwsn4cvpsx39sf53qsqcjyjzsqp90lus365w` |
+| **Ethereum (ETH)** | `0x08658772EeC32e72456048Be5D5a52bd3bcb01bc` |
+| **Litecoin (LTC)** | `LKYDeJWeo3kMG1TbY4cqSi87wFeR6YUXP2` |
+| **USDT (TRON/TRX)** | `TAhdRW3nJxinWjrdYfSWB31RdjRkQKvkEq` |
+| **USDT (BEP-20)** | `0x08658772EeC32e72456048Be5D5a52bd3bcb01bc` |
+
+> If you'd like to be recognized for your donation, feel free to [open an issue](https://github.com/Lanshuns/Qwacky/issues/new) with your name and transaction ID, and I'll add you to the supporters list!
 
 # Acknowledgments
 

@@ -825,7 +825,7 @@ export const AppName = styled.h1`
 `
 
 export const AppVersion = styled.span`
-  font-size: 13px;
+  font-size: 16px;
   color: ${props => props.theme.textTertiary};
   margin-bottom: 8px;
 `

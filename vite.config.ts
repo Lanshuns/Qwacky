@@ -1,51 +1,52 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
-import { copyFileSync, mkdirSync, existsSync } from 'fs'
+import { copyFileSync, mkdirSync, existsSync, readFileSync } from 'fs'
+
+const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 
 const copyManifest = () => {
   return {
     name: 'copy-manifest',
     writeBundle: () => {
-      mkdirSync('dist', { recursive: true })
-      mkdirSync('dist/assets/icons', { recursive: true })
+      const browser = process.env.BROWSER === 'firefox' ? 'firefox' : 'chrome'
+      const outDir = browser === 'firefox' ? 'dist_firefox' : 'dist_chrome'
 
-      const manifestFile = process.env.BROWSER === 'firefox' ? 'manifest.firefox.json' : 'manifest.chrome.json'
+      mkdirSync(`${outDir}/assets/icons`, { recursive: true })
 
-      copyFileSync(manifestFile, 'dist/manifest.json')
+      const manifestFile = browser === 'firefox' ? 'manifest.firefox.json' : 'manifest.chrome.json'
+      copyFileSync(manifestFile, `${outDir}/manifest.json`)
 
       const iconSizes = ['16', '48', '128']
       iconSizes.forEach(size => {
-        copyFileSync(
-          `assets/icons/qwacky-${size}.png`, 
-          `dist/assets/icons/qwacky-${size}.png`
-        )
+        copyFileSync(`assets/icons/qwacky-${size}.png`, `${outDir}/assets/icons/qwacky-${size}.png`)
       })
 
-      copyFileSync('assets/icons/qwacky.png', 'dist/assets/icons/qwacky.png')
+      copyFileSync('assets/icons/qwacky.png', `${outDir}/assets/icons/qwacky.png`)
 
-      const polyfillPath = 'node_modules/webextension-polyfill/dist/browser-polyfill.js';
+      const polyfillPath = 'node_modules/webextension-polyfill/dist/browser-polyfill.js'
       if (existsSync(polyfillPath)) {
-        copyFileSync(polyfillPath, 'dist/browser-polyfill.js');
+        copyFileSync(polyfillPath, `${outDir}/browser-polyfill.js`)
       }
 
-      copyFileSync('CHANGELOG.md', 'dist/CHANGELOG.md')
-
+      copyFileSync('CHANGELOG.md', `${outDir}/CHANGELOG.md`)
     }
   }
 }
 
 export default defineConfig(({ mode }) => {
   process.env.BROWSER = mode === 'firefox' ? 'firefox' : 'chrome'
-  
+  const outDir = process.env.BROWSER === 'firefox' ? 'dist_firefox' : 'dist_chrome'
+
   return {
     plugins: [react(), copyManifest()],
     define: {
+      __APP_VERSION__: JSON.stringify(pkg.version),
       'process.env.BROWSER': JSON.stringify(process.env.BROWSER)
     },
     build: {
-      outDir: 'dist',
-      sourcemap: true,
+      outDir,
+      sourcemap: false,
       emptyOutDir: true,
       rollupOptions: {
         input: {

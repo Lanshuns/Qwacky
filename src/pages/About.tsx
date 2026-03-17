@@ -1,4 +1,4 @@
-import { MdArrowBack, MdOpenInNew } from 'react-icons/md'
+import { MdArrowBack, MdOpenInNew, MdFavorite } from 'react-icons/md'
 import { FaGithub } from 'react-icons/fa'
 import { BackButton } from '../styles/SharedStyles'
 import { AboutContainer, AppInfo, AppLogo, AppName, AppVersion, LinksSection, LinkItem } from '../styles/pages.styles'
@@ -24,10 +24,15 @@ export const About = ({ onBack }: AboutProps) => {
       <AppInfo>
         <AppLogo src="/assets/icons/qwacky.png" alt="Qwacky" />
         <AppName>Qwacky</AppName>
-        <AppVersion>v1.2.1</AppVersion>
+        <AppVersion>v{__APP_VERSION__}</AppVersion>
       </AppInfo>
 
       <LinksSection>
+        <LinkItem href="https://github.com/Lanshuns/Qwacky#support-the-project" target="_blank" rel="noopener noreferrer">
+          <MdFavorite size={20} />
+          Support the Project
+          <MdOpenInNew size={16} />
+        </LinkItem>
         <LinkItem href="https://github.com/Lanshuns/Qwacky" target="_blank" rel="noopener noreferrer">
           <FaGithub size={20} />
           GitHub Repository

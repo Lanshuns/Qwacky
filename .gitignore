@@ -6,8 +6,13 @@ package-lock.json
 
 # Production
 dist
+dist_chrome
+dist_firefox
 build
 releases
+
+# Local scripts
+scripts/package.js
 
 # Other
 .DS_Store

@@ -11,7 +11,7 @@ import { Header } from './components/Header'
 import { theme } from './theme'
 import { useState, useEffect } from 'react'
 
-const APP_VERSION = '1.2.1'
+const APP_VERSION = __APP_VERSION__
 
 const GlobalStyle = createGlobalStyle`
   @keyframes fadeIn {

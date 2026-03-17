@@ -49,7 +49,7 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
 
   const isPopout = window.location.search.includes('popout=1')
 
-  const openReviews = () => window.open('https://chromewebstore.google.com/detail/qwacky/kieehbhdbincplacegpjdkoglfakboeo/reviews', '_blank')
+  const openSupport = () => window.open('https://github.com/Lanshuns/Qwacky#support-the-project', '_blank')
   const openStore = () => window.open('https://chromewebstore.google.com/detail/qwacky/kieehbhdbincplacegpjdkoglfakboeo', '_blank')
 
   const handlePopout = () => {
@@ -146,7 +146,7 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
           <Title>Qwacky</Title>
         </TitleSection>
         <IconsSection>
-          <IconButton onClick={openReviews}>
+          <IconButton onClick={openSupport}>
             <MdFavorite size={24} />
           </IconButton>
           <ThemeDropdown ref={themeDropdownRef}>
