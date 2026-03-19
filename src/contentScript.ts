@@ -27,6 +27,8 @@ const showNotification = (message: string) => {
     boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)'
   }
   Object.assign(notification.style, styles)
+  notification.setAttribute('role', 'status')
+  notification.setAttribute('aria-live', 'polite')
   notification.textContent = message === 'Not authenticated' ? 'You need to login first' : message
   document.body.appendChild(notification)
   

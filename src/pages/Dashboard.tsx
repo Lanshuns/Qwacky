@@ -73,7 +73,7 @@ export const Dashboard = () => {
   const [selectedSender, setSelectedSender] = useState<string | null>(null);
   const [showAliasPicker, setShowAliasPicker] = useState(false);
   const [pickerSearch, setPickerSearch] = useState("");
-  const duckService = new DuckService();
+  const duckService = useMemo(() => new DuckService(), []);
   const { showNotification, NotificationRenderer } = useNotification();
 
   useEffect(() => {

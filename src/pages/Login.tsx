@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { DuckService } from '../services/DuckService'
 import { MdArrowBack } from 'react-icons/md'
 import { useApp } from '../context/AppContext'
@@ -16,7 +16,7 @@ export const Login = ({ onSubmit, isAddingAccount, onBack }: LoginProps) => {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showSignupWindow, setShowSignupWindow] = useState(false)
-  const duckService = new DuckService()
+  const duckService = useMemo(() => new DuckService(), [])
   const { accounts } = useApp()
   const checkClosedRef = useRef<ReturnType<typeof setInterval> | null>(null)
 

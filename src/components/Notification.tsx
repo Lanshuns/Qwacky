@@ -24,7 +24,7 @@ export const Notification: React.FC<NotificationProps> = ({
   }, [duration, onClose]);
 
   return createPortal(
-    <NotificationContainer position={position}>
+    <NotificationContainer position={position} role="status" aria-live="polite">
       {message}
     </NotificationContainer>,
     document.body

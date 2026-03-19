@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { DuckService } from '../services/DuckService'
 import { useApp } from '../context/AppContext'
 import { MdArrowBack } from 'react-icons/md'
@@ -24,7 +24,7 @@ export const OTP = ({ username, onBack, isAddingAccount, onSuccess }: OTPProps) 
   const [resendLoading, setResendLoading] = useState(false)
   const [resendSuccess, setResendSuccess] = useState('')
   const { setUserData, switchAccount } = useApp()
-  const duckService = new DuckService()
+  const duckService = useMemo(() => new DuckService(), [])
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const resendTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const verifyingRef = useRef(false)

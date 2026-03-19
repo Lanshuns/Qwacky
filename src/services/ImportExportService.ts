@@ -143,7 +143,7 @@ export class ImportExportService {
       }
 
       const exportData: QwackyBackup = {
-        version: '1.0',
+        version: '2.0',
         type: 'qwacky_backup',
         timestamp: Date.now(),
         account: selectedAccounts.map(u => `${u}@duck.com`).join(', '),

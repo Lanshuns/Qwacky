@@ -32,8 +32,16 @@ const syncService = new SyncService()
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }: { children: React.ReactNode }) => {
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
-    const saved = localStorage.getItem('themeMode')
-    return saved ? JSON.parse(saved) : 'system'
+    try {
+      const saved = localStorage.getItem('themeMode')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed === 'light' || parsed === 'dark' || parsed === 'system') {
+          return parsed
+        }
+      }
+    } catch {}
+    return 'system'
   })
   
   const [systemIsDark, setSystemIsDark] = useState(() => 

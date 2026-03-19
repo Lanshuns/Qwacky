@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { MdFileUpload, MdArrowBack, MdDescription, MdSecurity, MdDownload, MdSync, MdRefresh, MdKeyboardArrowDown } from "react-icons/md";
 import { DuckService } from "../services/DuckService";
 import { SyncService, SyncOptions } from "../services/SyncService";
@@ -50,8 +50,8 @@ export const Settings = ({ onBack }: SettingsProps) => {
   const [permissionState, setPermissionState] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importingRef = useRef(false);
-  const duckService = new DuckService();
-  const syncService = new SyncService();
+  const duckService = useMemo(() => new DuckService(), []);
+  const syncService = useMemo(() => new SyncService(), []);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [syncOptions, setSyncOptions] = useState<SyncOptions>({ enabled: false, addresses: true, reverseAliases: true, session: false, syncAccounts: [] });
   const [includeSession, setIncludeSession] = useState(false);

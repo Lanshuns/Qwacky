@@ -9,8 +9,10 @@ export class AuthService {
 
   async requestOTP(username: string) {
     try {
+      const url = new URL('https://quack.duckduckgo.com/api/auth/loginlink');
+      url.searchParams.set('user', username);
       const response = await fetch(
-        `https://quack.duckduckgo.com/api/auth/loginlink?user=${username}`,
+        url.toString(),
         { headers: this.headers }
       )
       if (response.ok) {
@@ -30,8 +32,11 @@ export class AuthService {
 
   async verifyOTP(username: string, otp: string) {
     try {
+      const url = new URL('https://quack.duckduckgo.com/api/auth/login');
+      url.searchParams.set('otp', otp);
+      url.searchParams.set('user', username);
       const loginResponse = await fetch(
-        `https://quack.duckduckgo.com/api/auth/login?otp=${otp}&user=${username}`,
+        url.toString(),
         { headers: this.headers }
       )
       if (loginResponse.status === 429) {

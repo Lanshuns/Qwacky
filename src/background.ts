@@ -197,6 +197,10 @@ api.runtime.onInstalled.addListener(() => {
 setTimeout(initialize, 1000)
 
 api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (!message || typeof message !== 'object' || typeof message.action !== 'string') {
+    return false
+  }
+
   if (message.action === 'getFeatureState') {
     FeatureState.get()
       .then(enabled => sendResponse({ enabled }))
@@ -270,6 +274,10 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message.action === 'requestOTP') {
+    if (typeof message.username !== 'string') {
+      sendResponse({ status: 'error', message: 'Invalid username' })
+      return true
+    }
     duckService.login(message.username)
       .then(sendResponse)
       .catch(err => sendResponse({ status: 'error', message: errorMessage(err) }))
@@ -277,6 +285,10 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message.action === 'verifyOTP') {
+    if (typeof message.username !== 'string' || typeof message.otp !== 'string') {
+      sendResponse({ status: 'error', message: 'Invalid credentials' })
+      return true
+    }
     duckService.verifyOTP(message.username, message.otp)
       .then(sendResponse)
       .catch(err => sendResponse({ status: 'error', message: errorMessage(err) }))
