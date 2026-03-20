@@ -66,6 +66,7 @@ export const Dashboard = () => {
   const [addresses, setAddresses] = useState<StoredAddress[]>([]);
   const [loading, setLoading] = useState(false);
   const [autoEditAddress, setAutoEditAddress] = useState<string | null>(null);
+  const [autoEditAlias, setAutoEditAlias] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'generate' | 'send'>('generate');
   const [recipientEmail, setRecipientEmail] = useState("");
   const [reverseAliases, setReverseAliases] = useState<ReverseAlias[]>([]);
@@ -229,6 +230,7 @@ export const Dashboard = () => {
     const nativeEvent = event && 'clientX' in event.nativeEvent ? event.nativeEvent as MouseEvent : undefined;
     showNotification("Copied!", nativeEvent);
     setRecipientEmail("");
+    setAutoEditAlias(email);
   };
 
   const handleUpdateReverseAliasNotes = async (key: string, notes: string) => {
@@ -427,6 +429,8 @@ export const Dashboard = () => {
             onUpdateNotes={handleUpdateReverseAliasNotes}
             onDeleteItem={handleDeleteReverseAlias}
             onClearAll={handleClearAllReverseAliases}
+            autoEditKey={autoEditAlias}
+            onAutoEditComplete={() => setAutoEditAlias(null)}
             onUpdateTags={handleUpdateReverseAliasTags}
             allTags={allTags}
           />

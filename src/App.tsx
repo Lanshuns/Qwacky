@@ -247,6 +247,7 @@ export const App = () => {
     if (showSettings) return <Settings onBack={toggleSettings} />
     if (showAbout) return <About onBack={toggleAbout} />
     if (showMyAccount) return <MyAccount onBack={toggleMyAccount} />
+    if (showChangelog) return <Changelog onBack={toggleChangelog} />
 
     if (!userData || addingAccount) {
       if (currentPage === 'login') {
@@ -294,7 +295,6 @@ export const App = () => {
     }
 
     if (userData && !addingAccount) {
-      if (showChangelog) return <Changelog onBack={toggleChangelog} />
       return <Dashboard />
     }
 

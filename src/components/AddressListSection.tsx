@@ -181,6 +181,9 @@ const renderItem = (
             placeholder="Add tag..."
             autoFocus
           />
+          <IconButton onClick={() => { handleAddTag(tagInputValue); }} aria-label="Add tag">
+            <MdCheck size={16} />
+          </IconButton>
           <IconButton onClick={() => { setEditingTags(null); setTagInputValue(''); }} aria-label="Close tag input">
             <MdClose size={16} />
           </IconButton>
