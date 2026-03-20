@@ -19,4 +19,18 @@ chrome.runtime.onMessage.addListener((message) => {
   });
 });
 
+window.addEventListener('message', (event) => {
+  if (event.origin !== window.location.origin) return;
+  if (event.data?.type !== 'qwacky-auth-token') return;
+
+  const { token, username } = event.data;
+  if (token) {
+    chrome.runtime.sendMessage({
+      action: 'auto-login',
+      token,
+      username
+    });
+  }
+});
+
 export {};

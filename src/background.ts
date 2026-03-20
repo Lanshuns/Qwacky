@@ -295,6 +295,87 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true
   }
 
+  if (message.action === 'auto-login') {
+    if (typeof message.token !== 'string') {
+      sendResponse({ status: 'error', message: 'Invalid token' })
+      return true
+    }
+
+    const token = message.token
+    const username = typeof message.username === 'string' ? message.username : ''
+
+    ;(async () => {
+      try {
+        const headers: Record<string, string> = {
+          'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36',
+          'authorization': `Bearer ${token}`
+        }
+
+        const dashboardResponse = await fetch('https://quack.duckduckgo.com/api/email/dashboard', { headers })
+        if (!dashboardResponse.ok) {
+          await api.storage.local.set({ auto_login_error: 'Failed to load dashboard data. Please log in manually.' })
+          sendResponse({ status: 'error', message: 'Failed to load dashboard data.' })
+          return
+        }
+
+        const dashboardData = await dashboardResponse.json()
+        if (!dashboardData?.user) {
+          await api.storage.local.set({ auto_login_error: 'Invalid response from server. Please log in manually.' })
+          sendResponse({ status: 'error', message: 'Invalid dashboard data.' })
+          return
+        }
+
+        if (username && !dashboardData.user.username) {
+          dashboardData.user.username = username
+        }
+
+        const resolvedUsername = dashboardData.user.username || username
+        if (!resolvedUsername) {
+          await api.storage.local.set({ auto_login_error: 'Could not determine username. Please log in manually.' })
+          sendResponse({ status: 'error', message: 'Could not determine username.' })
+          return
+        }
+
+        const result = await api.storage.local.get(['accounts', 'currentAccount'])
+        const accounts: Array<{ username: string; userData: any; lastUsed: number }> = Array.isArray(result.accounts) ? result.accounts : []
+
+        const existing = accounts.find(acc => acc.username === resolvedUsername)
+        if (existing && result.currentAccount === resolvedUsername) {
+          sendResponse({ status: 'success', message: 'Already logged in.' })
+          return
+        }
+
+        await api.storage.local.set({
+          access_token: token,
+          user_data: dashboardData
+        })
+
+        const newAccount = {
+          username: resolvedUsername,
+          userData: dashboardData,
+          lastUsed: Date.now()
+        }
+
+        const updatedAccounts = existing
+          ? accounts.map(acc => acc.username === resolvedUsername ? newAccount : acc)
+          : [...accounts, newAccount]
+
+        await api.storage.local.set({
+          accounts: updatedAccounts,
+          currentAccount: resolvedUsername,
+          loginState: 'login',
+          auto_login_account: resolvedUsername
+        })
+
+        sendResponse({ status: 'success' })
+      } catch (err) {
+        await api.storage.local.set({ auto_login_error: 'Auto-login failed. Please log in manually.' })
+        sendResponse({ status: 'error', message: errorMessage(err) })
+      }
+    })()
+    return true
+  }
+
   if (message.action === 'generateAddress') {
     duckService.generateAddress(message.domain)
       .then(sendResponse)

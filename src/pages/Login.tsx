@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { DuckService } from '../services/DuckService'
 import { MdArrowBack } from 'react-icons/md'
 import { useApp } from '../context/AppContext'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { BackButton, PrimaryButton } from '../styles/SharedStyles'
 import { LoginContainer, LoginMessage, DuckText, InputWrapper, LoginInput, Suffix, LoginErrorMessage, SignupSection, SignupLink } from '../styles/pages.styles'
 
@@ -15,7 +16,7 @@ export const Login = ({ onSubmit, isAddingAccount, onBack }: LoginProps) => {
   const [username, setUsername] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [showSignupWindow, setShowSignupWindow] = useState(false)
+  const [showSignupDialog, setShowSignupDialog] = useState(false)
   const duckService = useMemo(() => new DuckService(), [])
   const { accounts } = useApp()
   const checkClosedRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -42,7 +43,7 @@ export const Login = ({ onSubmit, isAddingAccount, onBack }: LoginProps) => {
     setUsername(sanitized);
   }
 
-  const handleCreateAccount = () => {
+  const openSignupWindow = () => {
     const isMobile = /android|mobile/i.test(navigator.userAgent);
     const signupUrl = 'https://duckduckgo.com/email/start';
 
@@ -55,16 +56,22 @@ export const Login = ({ onSubmit, isAddingAccount, onBack }: LoginProps) => {
         );
 
     if (signupWindow) {
-      setShowSignupWindow(true);
-
       checkClosedRef.current = setInterval(() => {
         if (signupWindow.closed) {
-          setShowSignupWindow(false);
           clearInterval(checkClosedRef.current!);
           checkClosedRef.current = null;
         }
       }, 1000);
     }
+  }
+
+  const handleCreateAccount = () => {
+    setShowSignupDialog(true);
+  }
+
+  const handleSignupConfirm = () => {
+    setShowSignupDialog(false);
+    openSignupWindow();
   }
 
   const handleSubmit = async () => {
@@ -125,13 +132,18 @@ export const Login = ({ onSubmit, isAddingAccount, onBack }: LoginProps) => {
 
       <SignupSection>
         Don't have one? <SignupLink onClick={handleCreateAccount}>Create now</SignupLink>
-        {showSignupWindow && (
-          <div style={{ marginTop: '8px', fontSize: '12px', fontStyle: 'italic' }}>
-            Signup window opened. Complete registration and return here to login.
-          </div>
-        )}
       </SignupSection>
 
+      <ConfirmDialog
+        isOpen={showSignupDialog}
+        variant="info"
+        title="Create a Duck Address"
+        message="You'll be redirected to DuckDuckGo to create your @duck.com address. Once you complete the signup, you'll be automatically logged in."
+        confirmLabel="Continue to DuckDuckGo"
+        cancelLabel="Cancel"
+        onConfirm={handleSignupConfirm}
+        onCancel={() => setShowSignupDialog(false)}
+      />
     </LoginContainer>
   )
 }

@@ -8,6 +8,7 @@ import { Changelog } from './pages/Changelog'
 import { About } from './pages/About'
 import { MyAccount } from './pages/MyAccount'
 import { Header } from './components/Header'
+import { ConfirmDialog } from './components/ConfirmDialog'
 import { theme } from './theme'
 import { useState, useEffect } from 'react'
 
@@ -83,6 +84,8 @@ export const App = () => {
   const [showAbout, setShowAbout] = useState(false)
   const [showMyAccount, setShowMyAccount] = useState(false)
   const [addingAccount, setAddingAccount] = useState(false)
+  const [autoLoginAccount, setAutoLoginAccount] = useState<string | null>(null)
+  const [autoLoginError, setAutoLoginError] = useState<string | null>(null)
 
   useEffect(() => {
     chrome.storage.local.get([
@@ -90,7 +93,9 @@ export const App = () => {
       'tempUsername',
       'addingAccount',
       'lastVersion',
-      'showSettings'
+      'showSettings',
+      'auto_login_account',
+      'auto_login_error'
     ], (result) => {
       if (result.loginState) {
         setCurrentPage(result.loginState)
@@ -104,12 +109,37 @@ export const App = () => {
       if (result.showSettings !== undefined) {
         setShowSettings(result.showSettings)
       }
+      if (result.auto_login_account) {
+        setAutoLoginAccount(result.auto_login_account)
+        setAddingAccount(false)
+        chrome.storage.local.remove(['auto_login_account', 'addingAccount', 'loginState', 'tempUsername'])
+      }
+      if (result.auto_login_error) {
+        setAutoLoginError(result.auto_login_error)
+        chrome.storage.local.remove('auto_login_error')
+      }
       if (userData && result.lastVersion !== APP_VERSION) {
         setShowChangelog(true)
         chrome.storage.local.set({ lastVersion: APP_VERSION })
       }
     })
   }, [userData])
+
+  useEffect(() => {
+    const handleAutoLogin = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
+      if (areaName === 'local' && changes.auto_login_account?.newValue) {
+        setAutoLoginAccount(changes.auto_login_account.newValue)
+        setAddingAccount(false)
+        chrome.storage.local.remove(['auto_login_account', 'addingAccount', 'loginState', 'tempUsername'])
+      }
+      if (areaName === 'local' && changes.auto_login_error?.newValue) {
+        setAutoLoginError(changes.auto_login_error.newValue)
+        chrome.storage.local.remove('auto_login_error')
+      }
+    }
+    chrome.storage.onChanged.addListener(handleAutoLogin)
+    return () => chrome.storage.onChanged.removeListener(handleAutoLogin)
+  }, [])
 
   useEffect(() => {
     if (!userData) {
@@ -283,6 +313,24 @@ export const App = () => {
           onMyAccountClick={toggleMyAccount}
         />
         {renderCurrentPage()}
+        <ConfirmDialog
+          isOpen={autoLoginAccount !== null}
+          variant="info"
+          title="Logged In Successfully"
+          message={`Automatically logged in as ${autoLoginAccount}@duck.com`}
+          confirmLabel="Got it"
+          singleButton
+          onConfirm={() => setAutoLoginAccount(null)}
+        />
+        <ConfirmDialog
+          isOpen={autoLoginError !== null}
+          variant="warning"
+          title="Auto-Login Failed"
+          message={autoLoginError || ''}
+          confirmLabel="OK"
+          singleButton
+          onConfirm={() => setAutoLoginError(null)}
+        />
       </Container>
     </ThemeProvider>
   )
