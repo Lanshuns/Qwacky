@@ -115,9 +115,13 @@ export const Dashboard = () => {
     }
   }, [userData, currentAccount]);
 
-  const copyToClipboard = useCallback((text: string, event?: MouseEvent) => {
-    navigator.clipboard.writeText(text);
-    showNotification("Copied!", event);
+  const copyToClipboard = useCallback(async (text: string, event?: MouseEvent) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      showNotification("Copied!", event);
+    } catch {
+      showNotification("Failed to copy", event);
+    }
   }, [showNotification]);
 
   const formatTime = useCallback((timestamp: number) => {
@@ -226,7 +230,7 @@ export const Dashboard = () => {
       }, ...prev];
     });
 
-    navigator.clipboard.writeText(alias);
+    try { await navigator.clipboard.writeText(alias); } catch {}
     const nativeEvent = event && 'clientX' in event.nativeEvent ? event.nativeEvent as MouseEvent : undefined;
     showNotification("Copied!", nativeEvent);
     setRecipientEmail("");

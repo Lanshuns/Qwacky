@@ -67,6 +67,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     localStorage.setItem('themeMode', JSON.stringify(themeMode))
+    chrome.storage.local.set({ themeMode })
   }, [themeMode])
 
   useEffect(() => {

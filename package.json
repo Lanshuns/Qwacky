@@ -34,8 +34,8 @@
     "preview": "vite preview",
     "clean": "rm -rf dist_chrome dist_firefox",
     "update-version": "node scripts/update-version.js",
-    "package:chrome": "npm run build && node scripts/package.js chrome",
-    "package:firefox": "npm run build:firefox && node scripts/package.js firefox",
+    "package:chrome": "RELEASE=true npm run build && node scripts/package.js chrome",
+    "package:firefox": "RELEASE=true npm run build:firefox && node scripts/package.js firefox",
     "package": "npm run package:chrome && npm run package:firefox"
   }
 }

@@ -14,9 +14,13 @@ export const MyAccount = ({ onBack }: MyAccountProps) => {
   const { userData } = useApp()
   const { showNotification, NotificationRenderer } = useNotification()
 
-  const copyToClipboard = useCallback((text: string, event?: MouseEvent) => {
-    navigator.clipboard.writeText(text)
-    showNotification('Copied!', event)
+  const copyToClipboard = useCallback(async (text: string, event?: MouseEvent) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      showNotification('Copied!', event)
+    } catch {
+      showNotification('Failed to copy', event)
+    }
   }, [showNotification])
 
   const handleOpenDuckDuckGoEmail = () => {

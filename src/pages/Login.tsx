@@ -71,6 +71,7 @@ export const Login = ({ onSubmit, isAddingAccount, onBack }: LoginProps) => {
 
   const handleSignupConfirm = () => {
     setShowSignupDialog(false);
+    chrome.storage.local.set({ awaiting_signup_auto_login: true });
     openSignupWindow();
   }
 

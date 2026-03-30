@@ -219,15 +219,25 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     const ddgUrl = 'https://duckduckgo.com/email/settings/account'
 
     const onTabReady = (tabId: number) => {
-      const listener = (tid: number, changeInfo: chrome.tabs.TabChangeInfo) => {
+      const cleanup = () => {
+        api.tabs.onUpdated.removeListener(updatedListener);
+        api.tabs.onRemoved.removeListener(removedListener);
+        clearTimeout(timeoutId);
+      };
+      const updatedListener = (tid: number, changeInfo: chrome.tabs.TabChangeInfo) => {
         if (tid === tabId && changeInfo.status === 'complete') {
-          api.tabs.onUpdated.removeListener(listener);
+          cleanup();
           setTimeout(() => {
             api.tabs.sendMessage(tabId, { action: 'ddg-auth' });
           }, 500);
         }
       };
-      api.tabs.onUpdated.addListener(listener);
+      const removedListener = (tid: number) => {
+        if (tid === tabId) cleanup();
+      };
+      const timeoutId = setTimeout(cleanup, 30000);
+      api.tabs.onUpdated.addListener(updatedListener);
+      api.tabs.onRemoved.addListener(removedListener);
     }
 
     if (isAndroid) {
@@ -472,6 +482,10 @@ if (api.commands) {
     }
   })
 }
+
+api.runtime.onSuspend?.addListener(() => {
+  syncService.flushPendingWrites();
+});
 
 api.storage.onChanged.addListener(async (changes, namespace) => {
   if (namespace === 'sync') {

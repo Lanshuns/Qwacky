@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
-import { copyFileSync, mkdirSync, existsSync, readFileSync } from 'fs'
+import { copyFileSync, mkdirSync, existsSync, readFileSync, writeFileSync } from 'fs'
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 
@@ -15,7 +15,11 @@ const copyManifest = () => {
       mkdirSync(`${outDir}/assets/icons`, { recursive: true })
 
       const manifestFile = browser === 'firefox' ? 'manifest.firefox.json' : 'manifest.chrome.json'
-      copyFileSync(manifestFile, `${outDir}/manifest.json`)
+      const manifestContent = readFileSync(manifestFile, 'utf-8')
+      const finalManifest = process.env.RELEASE === 'true'
+        ? manifestContent.replace('qwacky@local-v1.0.1', 'qwacky@store-v1.0.1')
+        : manifestContent
+      writeFileSync(`${outDir}/manifest.json`, finalManifest)
 
       const iconSizes = ['16', '48', '128']
       iconSizes.forEach(size => {

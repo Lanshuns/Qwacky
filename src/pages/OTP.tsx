@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { DuckService } from '../services/DuckService'
 import { useApp } from '../context/AppContext'
-import { MdArrowBack } from 'react-icons/md'
+import { MdArrowBack, MdKeyboardArrowDown } from 'react-icons/md'
 import { BackButton } from '../styles/SharedStyles'
 import {
   OTPContainer, OTPUsername, OTPMessage, OTPInput, OTPButton,
   OTPErrorMessage, OTPResendRow, OTPResendButton, OTPCooldownText,
-  OTPHint, OTPSuccessMessage
+  OTPHint, OTPSuccessMessage, OTPHintToggle
 } from '../styles/pages.styles'
 
 interface OTPProps {
@@ -23,6 +23,7 @@ export const OTP = ({ username, onBack, isAddingAccount, onSuccess }: OTPProps) 
   const [cooldown, setCooldown] = useState(0)
   const [resendLoading, setResendLoading] = useState(false)
   const [resendSuccess, setResendSuccess] = useState('')
+  const [showHint, setShowHint] = useState(false)
   const { setUserData, switchAccount } = useApp()
   const duckService = useMemo(() => new DuckService(), [])
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -185,10 +186,16 @@ export const OTP = ({ username, onBack, isAddingAccount, onSuccess }: OTPProps) 
       {error && <OTPErrorMessage>{error}</OTPErrorMessage>}
       {resendSuccess && <OTPSuccessMessage>{resendSuccess}</OTPSuccessMessage>}
 
-      <OTPHint>
-        Didn't receive it? Check your spam or junk folder. Some email providers
-        (like ProtonMail) may delay or filter messages from DuckDuckGo.
-      </OTPHint>
+      <OTPHintToggle onClick={() => setShowHint(prev => !prev)}>
+        <MdKeyboardArrowDown size={14} style={{ transform: showHint ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+        Having trouble logging in?
+      </OTPHintToggle>
+      {showHint && (
+        <OTPHint>
+          Didn't receive it? Check your spam or junk folder. Some email providers
+          (like ProtonMail) may delay or filter messages from DuckDuckGo.
+        </OTPHint>
+      )}
     </OTPContainer>
   )
 }

@@ -153,8 +153,23 @@ export const OTPCooldownText = styled.span`
   font-weight: 500;
 `
 
-export const OTPHint = styled.div`
+export const OTPHintToggle = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: ${props => props.theme.primary};
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0;
   margin-top: 16px;
+  &:hover { opacity: 0.8; }
+`
+
+export const OTPHint = styled.div`
+  margin-top: 8px;
   padding: 10px 12px;
   border-radius: 8px;
   background: ${props => props.theme.surface};

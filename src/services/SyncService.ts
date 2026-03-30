@@ -73,6 +73,22 @@ export class SyncService {
     return waitForPrev.then(() => release!);
   }
 
+  async flushPendingWrites(): Promise<void> {
+    const entries = Array.from(this.pendingWrites.entries());
+    this.pendingWrites.clear();
+    for (const [accountKey, { data, timer }] of entries) {
+      clearTimeout(timer);
+      const release = await this.acquireLock();
+      try {
+        await this.executeSyncWrite(accountKey, data);
+      } catch (error) {
+        console.error('Flush write error:', error);
+      } finally {
+        release();
+      }
+    }
+  }
+
   private validateAddresses(data: any[]): Address[] {
     if (!Array.isArray(data)) return [];
     return data.filter(item =>
@@ -732,7 +748,7 @@ export class SyncService {
           hideGeneratedAddresses: result.hide_generated_addresses || false,
           hideReverseAliases: result.hide_reverse_aliases || false,
           contextMenuEnabled: result.contextMenuEnabled || false,
-          themeMode: localStorage.getItem('themeMode') || 'system',
+          themeMode: (await chrome.storage.local.get('themeMode')).themeMode || 'system',
         },
       };
 
@@ -847,7 +863,7 @@ export class SyncService {
         contextMenuEnabled: sessionData.settings.contextMenuEnabled,
       });
       if (sessionData.settings.themeMode) {
-        localStorage.setItem('themeMode', JSON.stringify(sessionData.settings.themeMode));
+        await chrome.storage.local.set({ themeMode: sessionData.settings.themeMode });
       }
     }
 
