@@ -155,7 +155,7 @@ export class ImportExportService {
         const storageResult = await chrome.storage.local.get([
           'accounts', 'currentAccount',
           'hide_user_info', 'hide_generated_addresses', 'hide_reverse_aliases',
-          'contextMenuEnabled', 'syncEnabled'
+          'contextMenuEnabled', 'syncEnabled', 'time_format'
         ]);
 
         const allStoredAccounts: Array<{ userData: any; username: string; lastUsed: number }> = storageResult.accounts || [];
@@ -185,7 +185,8 @@ export class ImportExportService {
             hideReverseAliases: storageResult.hide_reverse_aliases || false,
             contextMenuEnabled: storageResult.contextMenuEnabled || false,
             syncEnabled: storageResult.syncEnabled || false,
-            themeMode: themeMode ? JSON.parse(themeMode) : 'system'
+            themeMode: themeMode ? JSON.parse(themeMode) : 'system',
+            timeFormat: storageResult.time_format === '24h' ? '24h' : '12h'
           }
         };
       }
@@ -285,7 +286,8 @@ export class ImportExportService {
             hide_generated_addresses: session.settings.hideGeneratedAddresses || false,
             hide_reverse_aliases: session.settings.hideReverseAliases || false,
             contextMenuEnabled: session.settings.contextMenuEnabled || false,
-            syncEnabled: session.settings.syncEnabled || false
+            syncEnabled: session.settings.syncEnabled || false,
+            time_format: session.settings.timeFormat === '24h' ? '24h' : '12h'
           });
         }
 

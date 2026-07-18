@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { MdInfo, MdOpenInNew, MdKeyboardArrowDown, MdClose, MdCheck } from "react-icons/md";
 import { useApp } from "../context/AppContext";
 import { DuckService } from "../services/DuckService";
-import { ReverseAlias } from "../types";
+import { StorageService } from "../services/StorageService";
+import { ReverseAlias, TimeFormat } from "../types";
 import { useNotification } from "../components/Notification";
 
 import { ItemListSection, ListItem, ListConfig } from "../components/AddressListSection";
@@ -75,6 +76,8 @@ export const Dashboard = () => {
   const [showAliasPicker, setShowAliasPicker] = useState(false);
   const [pickerSearch, setPickerSearch] = useState("");
   const duckService = useMemo(() => new DuckService(), []);
+  const storageService = useMemo(() => new StorageService(), []);
+  const [timeFormat, setTimeFormat] = useState<TimeFormat>('12h');
   const { showNotification, NotificationRenderer } = useNotification();
 
   useEffect(() => {
@@ -89,6 +92,10 @@ export const Dashboard = () => {
   useEffect(() => {
     chrome.storage.local.set({ dashboardActiveTab: activeTab });
   }, [activeTab]);
+
+  useEffect(() => {
+    storageService.getTimeFormat().then(setTimeFormat);
+  }, [storageService]);
 
   useEffect(() => {
     if (userData) {
@@ -129,11 +136,11 @@ export const Dashboard = () => {
     return date.toLocaleString("en-US", {
       hour: "numeric",
       minute: "numeric",
-      hour12: true,
+      hour12: timeFormat === '12h',
       month: "short",
       day: "numeric",
     });
-  }, []);
+  }, [timeFormat]);
 
   const generateNewAddress = async () => {
     setLoading(true);

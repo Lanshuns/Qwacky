@@ -1,4 +1,4 @@
-import { UserData, ReverseAlias } from '../types';
+import { UserData, ReverseAlias, TimeFormat } from '../types';
 import { SyncService } from './SyncService';
 
 interface Address {
@@ -386,6 +386,15 @@ export class StorageService {
 
   async setHideGeneratedAddresses(hide: boolean): Promise<void> {
     await chrome.storage.local.set({ hide_generated_addresses: hide });
+  }
+
+  async getTimeFormat(): Promise<TimeFormat> {
+    const result = await chrome.storage.local.get('time_format');
+    return result.time_format === '24h' ? '24h' : '12h';
+  }
+
+  async setTimeFormat(format: TimeFormat): Promise<void> {
+    await chrome.storage.local.set({ time_format: format });
   }
 
   async saveReverseAlias(recipientEmail: string, alias: string, notes?: string): Promise<void> {

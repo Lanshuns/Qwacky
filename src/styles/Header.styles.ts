@@ -60,7 +60,6 @@ export const BaseDropdown = styled.div`
   display: inline-block;
 `
 
-export const ThemeDropdown = styled(BaseDropdown)``
 export const MenuDropdown = styled(BaseDropdown)``
 
 export const DropdownContent = styled.div<{ isOpen: boolean }>`
@@ -76,18 +75,12 @@ export const DropdownContent = styled.div<{ isOpen: boolean }>`
   transform-origin: top right;
   background: ${props => props.theme.surfaceElevated};
   box-shadow: ${props => props.theme.shadowLg};
-  border: 1px solid ${props => props.theme.glassBorder};
-
-  @supports (backdrop-filter: blur(20px)) {
-    background: ${props => props.theme.glassBg};
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
+  border: 1px solid ${props => props.theme.border};
 `
 
 export const SubDropdown = styled.div`
   padding-left: 16px;
-  background-color: ${props => props.theme.surface}80;
+  background-color: ${props => props.theme.surface};
   border-left: 2px solid ${props => props.theme.primary}30;
   margin: 4px 0;
   display: none;

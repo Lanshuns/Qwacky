@@ -1,3 +1,5 @@
+export type TimeFormat = '12h' | '24h';
+
 export interface UserData {
   user: {
     email: string;
@@ -92,6 +94,7 @@ export interface QwackyBackup {
       contextMenuEnabled: boolean;
       syncEnabled: boolean;
       themeMode: string;
+      timeFormat?: TimeFormat;
     };
   };
 } 

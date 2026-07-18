@@ -1,5 +1,5 @@
 import { errorMessage } from '../utils/safeOps';
-import { UserData } from '../types';
+import { UserData, TimeFormat } from '../types';
 
 interface Address {
   value: string;
@@ -37,6 +37,7 @@ interface SessionSyncData {
     hideReverseAliases: boolean;
     contextMenuEnabled: boolean;
     themeMode: string;
+    timeFormat?: TimeFormat;
   };
 }
 
@@ -731,7 +732,7 @@ export class SyncService {
     }
 
     try {
-      const result = await chrome.storage.local.get(['accounts', 'currentAccount', 'hide_user_info', 'hide_generated_addresses', 'hide_reverse_aliases', 'contextMenuEnabled']);
+      const result = await chrome.storage.local.get(['accounts', 'currentAccount', 'hide_user_info', 'hide_generated_addresses', 'hide_reverse_aliases', 'contextMenuEnabled', 'time_format']);
       const accounts: Array<{ userData: UserData; username: string; lastUsed: number }> = result.accounts || [];
 
       const filteredAccounts = options.syncAccounts.length > 0
@@ -749,6 +750,7 @@ export class SyncService {
           hideReverseAliases: result.hide_reverse_aliases || false,
           contextMenuEnabled: result.contextMenuEnabled || false,
           themeMode: (await chrome.storage.local.get('themeMode')).themeMode || 'system',
+          timeFormat: result.time_format === '24h' ? '24h' : '12h',
         },
       };
 
@@ -861,6 +863,7 @@ export class SyncService {
         hide_generated_addresses: sessionData.settings.hideGeneratedAddresses,
         hide_reverse_aliases: sessionData.settings.hideReverseAliases,
         contextMenuEnabled: sessionData.settings.contextMenuEnabled,
+        time_format: sessionData.settings.timeFormat === '24h' ? '24h' : '12h',
       });
       if (sessionData.settings.themeMode) {
         await chrome.storage.local.set({ themeMode: sessionData.settings.themeMode });

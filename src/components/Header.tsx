@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { MdLightMode, MdDarkMode, MdLogout, MdSettings, MdDevices, MdMenu, MdAccountCircle, MdPersonAdd, MdNewReleases, MdSwapHoriz, MdKeyboardArrowDown, MdEdit, MdCheck, MdClose, MdFavorite, MdInfoOutline, MdManageAccounts, MdOpenInNew } from 'react-icons/md'
-import { useApp, ThemeMode } from '../context/AppContext'
+import { MdLogout, MdSettings, MdMenu, MdAccountCircle, MdPersonAdd, MdNewReleases, MdSwapHoriz, MdKeyboardArrowDown, MdEdit, MdCheck, MdClose, MdFavorite, MdInfoOutline, MdManageAccounts, MdOpenInNew } from 'react-icons/md'
+import { useApp } from '../context/AppContext'
 import { ConfirmDialog } from './ConfirmDialog'
 import {
   HeaderContainer,
@@ -9,7 +9,6 @@ import {
   Logo,
   IconsSection,
   IconButton,
-  ThemeDropdown,
   MenuDropdown,
   DropdownContent,
   SubDropdown,
@@ -36,15 +35,13 @@ interface HeaderProps {
 }
 
 export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, onAboutClick, onMyAccountClick }: HeaderProps) => {
-  const { darkMode, themeMode, setThemeMode, userData, logout, accounts, currentAccount, switchAccount } = useApp()
-  const [themeDropdownOpen, setThemeDropdownOpen] = useState(false)
+  const { userData, logout, accounts, currentAccount, switchAccount } = useApp()
   const [menuDropdownOpen, setMenuDropdownOpen] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [accountsListOpen, setAccountsListOpen] = useState(false)
   const [showNicknameDialog, setShowNicknameDialog] = useState(false)
   const [nickname, setNickname] = useState('')
   const [accountNicknames, setAccountNicknames] = useState<Record<string, string>>({})
-  const themeDropdownRef = useRef<HTMLDivElement>(null)
   const menuDropdownRef = useRef<HTMLDivElement>(null)
 
   const isPopout = window.location.search.includes('popout=1')
@@ -124,9 +121,6 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (themeDropdownRef.current && !themeDropdownRef.current.contains(event.target as Node)) {
-        setThemeDropdownOpen(false)
-      }
       if (menuDropdownRef.current && !menuDropdownRef.current.contains(event.target as Node)) {
         setMenuDropdownOpen(false)
       }
@@ -149,29 +143,6 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
           <IconButton onClick={openSupport}>
             <MdFavorite size={24} />
           </IconButton>
-          <ThemeDropdown ref={themeDropdownRef}>
-            <IconButton onClick={() => setThemeDropdownOpen(!themeDropdownOpen)}>
-              {darkMode ? <MdDarkMode size={24} /> : <MdLightMode size={24} />}
-            </IconButton>
-            <DropdownContent isOpen={themeDropdownOpen}>
-              {[
-                { mode: 'light' as const, icon: MdLightMode, label: 'Light' },
-                { mode: 'dark' as const, icon: MdDarkMode, label: 'Dark' },
-                { mode: 'system' as const, icon: MdDevices, label: 'System' }
-              ].map(({ mode, icon: Icon, label }) => (
-                <DropdownItem
-                  key={mode}
-                  active={themeMode === mode}
-                  onClick={() => {
-                    setThemeMode(mode as ThemeMode)
-                    setThemeDropdownOpen(false);
-                  }}
-                >
-                  <Icon size={20} /> {label}
-                </DropdownItem>
-              ))}
-            </DropdownContent>
-          </ThemeDropdown>
           {!isPopout && (
             <IconButton onClick={handlePopout}>
               <MdOpenInNew size={24} />

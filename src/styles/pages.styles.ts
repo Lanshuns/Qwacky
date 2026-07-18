@@ -580,6 +580,38 @@ export const SyncOptionHint = styled.span`
   margin-left: 2px;
 `
 
+export const ThemeOptionLabel = styled.div`
+  font-size: 14px;
+  margin-bottom: 8px;
+`
+
+export const ThemeOptionGroup = styled.div`
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+`
+
+export const ThemeOptionButton = styled.button<{ active: boolean }>`
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 4px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  border: 1px solid ${props => props.active ? props.theme.primary : props.theme.border};
+  background: ${props => props.active ? `${props.theme.primary}1a` : props.theme.surface};
+  color: ${props => props.active ? props.theme.primary : props.theme.text};
+
+  &:hover {
+    border-color: ${props => props.theme.primary};
+  }
+`
+
 export const ExportButtonsContainer = styled.div`
   display: flex;
   gap: 8px;

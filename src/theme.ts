@@ -24,8 +24,6 @@ declare module 'styled-components' {
     borderLight: string
     borderFocus: string
     textOnPrimary: string
-    glassBg: string
-    glassBorder: string
   }
 }
 
@@ -52,9 +50,7 @@ export const theme = {
     shadowGlow: '0 0 20px rgba(255,159,25,0.3), 0 4px 12px rgba(255,159,25,0.2)',
     borderLight: '#F0F0F0',
     borderFocus: 'rgba(255,159,25,0.4)',
-    textOnPrimary: '#FFFFFF',
-    glassBg: 'rgba(255,255,255,0.7)',
-    glassBorder: 'rgba(255,255,255,0.3)'
+    textOnPrimary: '#FFFFFF'
   },
   dark: {
     primary: '#ff9f19',
@@ -78,8 +74,6 @@ export const theme = {
     shadowGlow: '0 0 20px rgba(255,159,25,0.25), 0 4px 12px rgba(255,159,25,0.15)',
     borderLight: '#333333',
     borderFocus: 'rgba(255,159,25,0.5)',
-    textOnPrimary: '#FFFFFF',
-    glassBg: 'rgba(45,45,45,0.7)',
-    glassBorder: 'rgba(255,255,255,0.08)'
+    textOnPrimary: '#FFFFFF'
   }
 }

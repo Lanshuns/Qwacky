@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { MdFileUpload, MdArrowBack, MdDescription, MdSecurity, MdDownload, MdSync, MdRefresh, MdKeyboardArrowDown } from "react-icons/md";
+import { MdFileUpload, MdArrowBack, MdDescription, MdSecurity, MdDownload, MdSync, MdRefresh, MdKeyboardArrowDown, MdPalette, MdLightMode, MdDarkMode, MdDevices } from "react-icons/md";
 import { DuckService } from "../services/DuckService";
+import { StorageService } from "../services/StorageService";
 import { SyncService, SyncOptions } from "../services/SyncService";
 import { usePermissions, PERMISSIONS, ALL_PERMISSIONS } from "../context/PermissionContext";
-import { useApp } from "../context/AppContext";
-import { BackupSummary } from "../types";
+import { useApp, ThemeMode } from "../context/AppContext";
+import { BackupSummary, TimeFormat } from "../types";
 import { PermissionToggle } from "../components/PermissionToggle";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Section, SectionHeader, BackButton } from "../styles/SharedStyles";
@@ -21,6 +22,9 @@ import {
   SyncOptionsTitle,
   SyncOptionRow,
   SyncOptionHint,
+  ThemeOptionLabel,
+  ThemeOptionGroup,
+  ThemeOptionButton,
   ExportButtonsContainer,
   BackupButton,
   HiddenFileInput,
@@ -39,6 +43,12 @@ const api = typeof browser !== 'undefined' ? browser : chrome;
 const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
 const isFirefoxPopup = isFirefox && !window.location.search.includes('popout=1');
 
+const THEME_OPTIONS: Array<{ mode: ThemeMode; icon: typeof MdLightMode; label: string }> = [
+  { mode: 'light', icon: MdLightMode, label: 'Light' },
+  { mode: 'dark', icon: MdDarkMode, label: 'Dark' },
+  { mode: 'system', icon: MdDevices, label: 'System' },
+];
+
 interface SettingsProps {
   onBack?: () => void;
 }
@@ -46,12 +56,14 @@ interface SettingsProps {
 export const Settings = ({ onBack }: SettingsProps) => {
   const [importResult, setImportResult] = useState<string | null>(null);
   const { hasPermissions } = usePermissions();
-  const { accounts, currentAccount } = useApp();
+  const { accounts, currentAccount, themeMode, setThemeMode } = useApp();
   const [permissionState, setPermissionState] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importingRef = useRef(false);
   const duckService = useMemo(() => new DuckService(), []);
+  const storageService = useMemo(() => new StorageService(), []);
   const syncService = useMemo(() => new SyncService(), []);
+  const [timeFormat, setTimeFormat] = useState<TimeFormat>('12h');
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [syncOptions, setSyncOptions] = useState<SyncOptions>({ enabled: false, addresses: true, reverseAliases: true, session: false, syncAccounts: [] });
   const [includeSession, setIncludeSession] = useState(false);
@@ -73,6 +85,16 @@ export const Settings = ({ onBack }: SettingsProps) => {
     quotaBytes: number;
     percentUsed: number;
   } | null>(null);
+
+  useEffect(() => {
+    storageService.getTimeFormat().then(setTimeFormat);
+  }, [storageService]);
+
+  const handleTimeFormatChange = async (use24h: boolean) => {
+    const format: TimeFormat = use24h ? '24h' : '12h';
+    setTimeFormat(format);
+    await storageService.setTimeFormat(format);
+  };
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -493,6 +515,38 @@ export const Settings = ({ onBack }: SettingsProps) => {
           Back to Dashboard
         </BackButton>
       )}
+      <Section>
+        <SectionHeader>
+          <h2><MdPalette size={20} style={{ marginRight: '8px' }} />Appearance</h2>
+        </SectionHeader>
+        <ThemeOptionLabel>Theme</ThemeOptionLabel>
+        <ThemeOptionGroup>
+          {THEME_OPTIONS.map(({ mode, icon: Icon, label }) => (
+            <ThemeOptionButton
+              key={mode}
+              type="button"
+              active={themeMode === mode}
+              aria-pressed={themeMode === mode}
+              onClick={() => setThemeMode(mode)}
+            >
+              <Icon size={16} />
+              {label}
+            </ThemeOptionButton>
+          ))}
+        </ThemeOptionGroup>
+        <SyncOptionRow>
+          <SyncToggleSwitch>
+            <SyncToggleInput
+              type="checkbox"
+              checked={timeFormat === '24h'}
+              onChange={(e) => handleTimeFormatChange(e.target.checked)}
+            />
+            <SyncToggleSlider />
+          </SyncToggleSwitch>
+          24-hour time
+        </SyncOptionRow>
+      </Section>
+
       <Section>
         <SectionHeader>
           <h2><MdSecurity size={20} style={{ marginRight: '8px' }} />Permissions & Features</h2>

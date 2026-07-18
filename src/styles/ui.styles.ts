@@ -280,15 +280,13 @@ export const InfoIcon = styled(MdInfo)`
 export const Tooltip = styled.div`
   position: absolute;
   width: 220px;
-  background: ${props => props.theme.glassBg};
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: ${props => props.theme.surfaceElevated};
   color: ${props => props.theme.text};
   padding: 10px 12px;
   border-radius: 10px;
   font-size: 12px;
   box-shadow: ${props => props.theme.shadowMd};
-  border: 1px solid ${props => props.theme.glassBorder};
+  border: 1px solid ${props => props.theme.border};
   z-index: 100;
   line-height: 1.4;
   left: 24px;
