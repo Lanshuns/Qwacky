@@ -18,3 +18,4 @@ scripts/package.js
 .DS_Store
 npm-debug.log*
 .vscode/*
+CLAUDE.md
