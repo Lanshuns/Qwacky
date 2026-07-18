@@ -49,8 +49,8 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
 
   const isPopout = window.location.search.includes('popout=1')
 
-  const openSupport = () => window.open('https://github.com/Lanshuns/Qwacky#support-the-project', '_blank')
-  const openStore = () => window.open('https://chromewebstore.google.com/detail/qwacky/kieehbhdbincplacegpjdkoglfakboeo', '_blank')
+  const openSupport = () => window.open('https://github.com/Lanshuns/Qwacky#-support-the-project', '_blank')
+  const openRepo = () => window.open('https://github.com/Lanshuns/Qwacky', '_blank')
 
   const handlePopout = () => {
     chrome.runtime.sendMessage({ action: 'popoutExtension' })
@@ -141,7 +141,7 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
   return (
     <>
       <HeaderContainer>
-        <TitleSection onClick={openStore}>
+        <TitleSection onClick={openRepo}>
           <Logo src="/assets/icons/qwacky.png" alt="Qwacky" />
           <Title>Qwacky</Title>
         </TitleSection>

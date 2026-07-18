@@ -596,7 +596,9 @@ export const Settings = ({ onBack }: SettingsProps) => {
               </SyncOptionRow>
               {syncOptions.session && (
                 <div style={{ marginLeft: '56px', marginTop: '4px', fontSize: '12px', color: '#ff9f19' }}>
-                  Session data includes your access tokens. They are encrypted by Chrome during sync but stored in your Google account.
+                  {isFirefox
+                    ? 'Session data includes your access tokens. They are encrypted by Firefox during sync but stored in your Mozilla account.'
+                    : 'Session data includes your access tokens. They are encrypted by Chrome during sync but stored in your Google account.'}
                 </div>
               )}
             </SyncOptionsContainer>

@@ -28,7 +28,7 @@ export const About = ({ onBack }: AboutProps) => {
       </AppInfo>
 
       <LinksSection>
-        <LinkItem href="https://github.com/Lanshuns/Qwacky#support-the-project" target="_blank" rel="noopener noreferrer">
+        <LinkItem href="https://github.com/Lanshuns/Qwacky#-support-the-project" target="_blank" rel="noopener noreferrer">
           <MdFavorite size={20} />
           Support the Project
           <MdOpenInNew size={16} />
