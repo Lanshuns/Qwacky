@@ -1,6 +1,6 @@
 import { AuthService } from './AuthService'
 import { StorageService } from './StorageService'
-import { ImportExportService } from './ImportExportService'
+import { ImportExportService, ImportAddressesResult } from './ImportExportService'
 import { LoginResponse, VerifyResponse, GenerateResponse, UserData, ReverseAlias } from '../types'
 
 export class DuckService {
@@ -176,7 +176,7 @@ export class DuckService {
     }
   }
 
-  async importAddresses(data: string): Promise<{ success: boolean, count: number, error?: string }> {
+  async importAddresses(data: string): Promise<ImportAddressesResult> {
     try {
       return await this.importExport.importAddresses(data)
     } catch (error: unknown) {
@@ -184,6 +184,23 @@ export class DuckService {
       return {
         success: false,
         count: 0,
+        duplicates: 0,
+        invalid: 0,
+        error: error instanceof Error ? error.message : 'Unknown error importing addresses'
+      }
+    }
+  }
+
+  async importAddressList(text: string): Promise<ImportAddressesResult> {
+    try {
+      return await this.importExport.importAddressList(text)
+    } catch (error: unknown) {
+      console.error('Error importing address list:', error)
+      return {
+        success: false,
+        count: 0,
+        duplicates: 0,
+        invalid: 0,
         error: error instanceof Error ? error.message : 'Unknown error importing addresses'
       }
     }

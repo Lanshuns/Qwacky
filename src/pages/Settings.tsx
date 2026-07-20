@@ -3,6 +3,7 @@ import { MdFileUpload, MdArrowBack, MdDescription, MdSecurity, MdDownload, MdSyn
 import { DuckService } from "../services/DuckService";
 import { StorageService } from "../services/StorageService";
 import { SyncService, SyncOptions } from "../services/SyncService";
+import { ImportAddressesResult } from "../services/ImportExportService";
 import { usePermissions, PERMISSIONS, ALL_PERMISSIONS } from "../context/PermissionContext";
 import { useApp, ThemeMode } from "../context/AppContext";
 import { BackupSummary, TimeFormat } from "../types";
@@ -42,6 +43,27 @@ declare const browser: typeof chrome;
 const api = typeof browser !== 'undefined' ? browser : chrome;
 const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
 const isFirefoxPopup = isFirefox && !window.location.search.includes('popout=1');
+
+const describeAddressImport = (result: ImportAddressesResult): string => {
+  if (!result.success) {
+    return `Import failed: ${result.error || 'Unknown error'}`;
+  }
+
+  const notes: string[] = [];
+  if (result.duplicates > 0) {
+    notes.push(`${result.duplicates} duplicate${result.duplicates === 1 ? '' : 's'} skipped`);
+  }
+  if (result.invalid > 0) notes.push(`${result.invalid} ignored (not a duck.com address)`);
+
+  if (result.count === 0) {
+    return result.error || 'No new addresses to import.';
+  }
+
+  const plural = result.count === 1 ? 'address' : 'addresses';
+  return notes.length > 0
+    ? `Imported ${result.count} ${plural} — ${notes.join(', ')}`
+    : `Imported ${result.count} ${plural}`;
+};
 
 const THEME_OPTIONS: Array<{ mode: ThemeMode; icon: typeof MdLightMode; label: string }> = [
   { mode: 'light', icon: MdLightMode, label: 'Light' },
@@ -431,18 +453,17 @@ export const Settings = ({ onBack }: SettingsProps) => {
       if (parsed.addresses && Array.isArray(parsed.addresses)) {
         setLoading(prev => ({ ...prev, import: true }));
         const result = await duckService.importAddresses(text);
-        if (result.success) {
-          setImportResult(`Successfully imported ${result.count} addresses`);
-        } else {
-          setImportResult(`Import failed: ${result.error || 'Unknown error'}`);
-        }
+        setImportResult(describeAddressImport(result));
         setLoading(prev => ({ ...prev, import: false }));
         return;
       }
 
       setImportResult("Unrecognized file format");
     } catch {
-      setImportResult("Import failed, invalid file");
+      setLoading(prev => ({ ...prev, import: true }));
+      const result = await duckService.importAddressList(text);
+      setImportResult(describeAddressImport(result));
+      setLoading(prev => ({ ...prev, import: false }));
     } finally {
       importingRef.current = false;
     }
@@ -706,6 +727,11 @@ export const Settings = ({ onBack }: SettingsProps) => {
           </BackupButton>
         </ExportButtonsContainer>
 
+        <ExportOptionHint style={{ display: 'block', marginBottom: '16px' }}>
+          Import accepts a Qwacky backup (.json), or a plain .txt list of existing
+          duck.com addresses — one per line.
+        </ExportOptionHint>
+
         <ExportOptionsContainer>
           <ExportOptionsTitle>Export Options</ExportOptionsTitle>
 
@@ -761,7 +787,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
         <HiddenFileInput
           type="file"
           ref={fileInputRef}
-          accept=".json"
+          accept=".json,.txt"
           onChange={handleImportFile}
         />
       </Section>

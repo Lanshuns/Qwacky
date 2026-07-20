@@ -9,47 +9,108 @@ interface Address {
   username?: string;
 }
 
+const ALIAS_PATTERN = /^[a-z0-9._-]{1,64}$/;
+
+export const normalizeAlias = (raw: unknown): string | null => {
+  if (typeof raw !== 'string') return null;
+
+  const trimmed = raw.trim().toLowerCase();
+  if (!trimmed) return null;
+
+  let local = trimmed;
+  if (trimmed.includes('@')) {
+    const parts = trimmed.split('@');
+    if (parts.length !== 2 || parts[1] !== 'duck.com') return null;
+    local = parts[0];
+  }
+
+  return ALIAS_PATTERN.test(local) ? local : null;
+};
+
+export interface ImportAddressesResult {
+  success: boolean;
+  count: number;
+  duplicates: number;
+  invalid: number;
+  error?: string;
+}
+
 export class ImportExportService {
   private storage: StorageService;
-  
+
   constructor() {
     this.storage = new StorageService();
   }
 
-  async importAddresses(data: string): Promise<{ success: boolean, count: number, error?: string }> {
+  async importAddresses(data: string): Promise<ImportAddressesResult> {
+    if (!data || typeof data !== 'string' || data.trim() === '') {
+      return { success: false, count: 0, duplicates: 0, invalid: 0, error: 'Import data is empty or invalid' };
+    }
+
+    let records: Array<{ value?: string; timestamp?: number; notes?: string; tags?: string[] }>;
     try {
-      if (!data || typeof data !== 'string' || data.trim() === '') {
-        return { success: false, count: 0, error: 'Import data is empty or invalid' };
+      const importData = JSON.parse(data);
+      if (!importData.addresses || !Array.isArray(importData.addresses)) {
+        return { success: false, count: 0, duplicates: 0, invalid: 0, error: 'Invalid format: missing addresses array' };
       }
+      records = importData.addresses;
+    } catch {
+      return { success: false, count: 0, duplicates: 0, invalid: 0, error: 'Invalid JSON format' };
+    }
 
-      let importedAddresses = [];
+    return this.importAddressRecords(records);
+  }
 
-      try {
-        const importData = JSON.parse(data);
+  async importAddressList(text: string): Promise<ImportAddressesResult> {
+    if (!text || typeof text !== 'string' || text.trim() === '') {
+      return { success: false, count: 0, duplicates: 0, invalid: 0, error: 'Import data is empty or invalid' };
+    }
 
-        if (importData.addresses && Array.isArray(importData.addresses)) {
-          importedAddresses = importData.addresses.map((addr: { value?: string, timestamp?: number, notes?: string }) => {
-            if (!addr.value) {
-              return null;
-            }
+    const records = text
+      .split(/[\r\n,;]+/)
+      .map(line => line.trim())
+      .filter(line => line !== '')
+      .map(value => ({ value }));
 
-            return {
-              ...addr,
-              value: addr.value.includes('@duck.com') ? addr.value.split('@')[0] : addr.value,
-              timestamp: addr.timestamp || Date.now(),
-              notes: addr.notes || ''
-            };
-          }).filter(Boolean);
-        } else {
-          return { success: false, count: 0, error: 'Invalid format: missing addresses array' };
+    if (records.length === 0) {
+      return { success: false, count: 0, duplicates: 0, invalid: 0, error: 'No addresses found in file' };
+    }
+
+    return this.importAddressRecords(records);
+  }
+
+  private async importAddressRecords(
+    records: Array<{ value?: string; timestamp?: number; notes?: string; tags?: string[] }>
+  ): Promise<ImportAddressesResult> {
+    try {
+      let invalid = 0;
+      let inFileDuplicates = 0;
+      const seen = new Set<string>();
+      const importedAddresses: Address[] = [];
+
+      for (const record of records) {
+        const value = normalizeAlias(record?.value);
+        if (!value) {
+          invalid++;
+          continue;
         }
-      } catch {
-        return { success: false, count: 0, error: 'Invalid JSON format' };
+        if (seen.has(value)) {
+          inFileDuplicates++;
+          continue;
+        }
+        seen.add(value);
+
+        importedAddresses.push({
+          ...record,
+          value,
+          timestamp: record.timestamp || Date.now(),
+          notes: record.notes || ''
+        });
       }
 
       const userData = await this.storage.getUserData();
       if (!userData || !userData.user || !userData.user.username) {
-        return { success: false, count: 0, error: 'User data not found. Please log in again.' };
+        return { success: false, count: 0, duplicates: inFileDuplicates, invalid, error: 'User data not found. Please log in again.' };
       }
       const username = userData.user.username;
 
@@ -61,12 +122,19 @@ export class ImportExportService {
           existingAddressMap.set(addr.value, true);
         });
 
-        const newAddresses = importedAddresses.filter((addr: { value: string }) => 
-          addr.value && !existingAddressMap.has(addr.value)
-        );
+        const newAddresses = importedAddresses.filter(addr => !existingAddressMap.has(addr.value));
+        const duplicates = inFileDuplicates + (importedAddresses.length - newAddresses.length);
 
         if (newAddresses.length === 0) {
-          return { success: true, count: 0, error: 'No new addresses to import. All addresses already exist.' };
+          return {
+            success: true,
+            count: 0,
+            duplicates,
+            invalid,
+            error: invalid > 0 && duplicates === 0
+              ? 'No valid duck.com addresses found.'
+              : 'No new addresses to import. All addresses already exist.'
+          };
         }
 
         const newAddressesWithUsername = newAddresses.map((addr: any) => ({
@@ -85,14 +153,18 @@ export class ImportExportService {
         const updatedGlobalAddresses = [...newAddressesWithUsername, ...globalAddresses];
         await chrome.storage.local.set({ generated_addresses: updatedGlobalAddresses });
         
-        return { 
-          success: true, 
-          count: newAddresses.length 
+        return {
+          success: true,
+          count: newAddresses.length,
+          duplicates,
+          invalid
         };
       } catch (storageError: unknown) {
-        return { 
-          success: false, 
-          count: 0, 
+        return {
+          success: false,
+          count: 0,
+          duplicates: inFileDuplicates,
+          invalid,
           error: `Storage error: ${storageError instanceof Error ? storageError.message : 'Failed to save imported addresses'}`
         };
       }
@@ -101,6 +173,8 @@ export class ImportExportService {
       return {
         success: false,
         count: 0,
+        duplicates: 0,
+        invalid: 0,
         error: `Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }
