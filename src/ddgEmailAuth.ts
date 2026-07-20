@@ -2,30 +2,65 @@ const isContextValid = () => {
   try { return !!chrome.runtime?.id; } catch { return false; }
 };
 
-chrome.runtime.onMessage.addListener((message) => {
-  if (message.action !== 'ddg-auth' || !isContextValid()) return;
+interface DeviceUserData {
+  userName: string;
+  token: string;
+  cohort: string;
+}
+
+const ANNOUNCE_DELAYS_MS = [0, 300, 1000];
+
+const postDeviceSignedIn = (userData: DeviceUserData) => {
+  window.postMessage({
+    deviceSignedIn: {
+      value: true,
+      userData,
+      capabilities: {}
+    }
+  }, window.location.origin);
+};
+
+const announceStoredCredentials = () => {
+  if (!isContextValid()) return;
 
   chrome.storage.local.get('user_data', (result) => {
     if (chrome.runtime.lastError) return;
+
     const userData = result.user_data;
     if (!userData?.user?.access_token || !userData?.user?.username) return;
 
-    window.postMessage({
-      deviceSignedIn: {
-        value: true,
-        userData: {
-          userName: userData.user.username,
-          token: userData.user.access_token,
-          cohort: userData.user.cohort || ''
-        },
-        capabilities: {}
-      }
-    }, window.location.origin);
+    const payload: DeviceUserData = {
+      userName: userData.user.username,
+      token: userData.user.access_token,
+      cohort: userData.user.cohort || ''
+    };
+
+    ANNOUNCE_DELAYS_MS.forEach(delay => {
+      setTimeout(() => postDeviceSignedIn(payload), delay);
+    });
   });
+};
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.action !== 'ddg-auth') return;
+  announceStoredCredentials();
 });
 
 window.addEventListener('message', (event) => {
   if (event.origin !== window.location.origin) return;
+
+  const addUserData = event.data?.addUserData;
+  if (addUserData) {
+    if (!addUserData.userName || !addUserData.token) return;
+
+    postDeviceSignedIn({
+      userName: addUserData.userName,
+      token: addUserData.token,
+      cohort: addUserData.cohort || ''
+    });
+    return;
+  }
+
   if (event.data?.type !== 'qwacky-auth-token') return;
   if (!isContextValid()) return;
 
@@ -42,5 +77,7 @@ window.addEventListener('message', (event) => {
     });
   });
 });
+
+announceStoredCredentials();
 
 export {};
