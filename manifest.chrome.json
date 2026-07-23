@@ -58,6 +58,12 @@
         "default": "Alt+Shift+Q"
       },
       "description": "Generate and fill duck address"
+    },
+    "convert-send-address": {
+      "suggested_key": {
+        "default": "Alt+Shift+S"
+      },
+      "description": "Convert the selected recipient into a send address"
     }
   }
 }

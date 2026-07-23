@@ -63,6 +63,37 @@ const fillInput = (element: HTMLElement | null, value: string) => {
   return false
 }
 
+const replaceSelection = (value: string, find?: string) => {
+  const element = document.activeElement as HTMLElement | null
+  if (!element) return false
+
+  try {
+    if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+      const start = element.selectionStart
+      const end = element.selectionEnd
+      if (start !== null && end !== null && start !== end) {
+        element.setRangeText(value, start, end, 'end')
+      } else if (find && element.value.includes(find)) {
+        const index = element.value.indexOf(find)
+        element.setRangeText(value, index, index + find.length, 'end')
+      } else {
+        element.value = value
+      }
+      element.dispatchEvent(new Event('input', { bubbles: true }))
+      element.dispatchEvent(new Event('change', { bubbles: true }))
+      return true
+    }
+
+    if (element.isContentEditable) {
+      return document.execCommand('insertText', false, value)
+    }
+  } catch {
+    return false
+  }
+
+  return false
+}
+
 const copyToClipboard = async (text: string): Promise<boolean> => {
   try {
     await navigator.clipboard.writeText(text)
@@ -72,29 +103,48 @@ const copyToClipboard = async (text: string): Promise<boolean> => {
   }
 }
 
-api.runtime.onMessage.addListener(async (message, _sender) => {
-  if (!setupConnection()) return;
+if (!(window as unknown as { __qwackyContentScript?: boolean }).__qwackyContentScript) {
+  (window as unknown as { __qwackyContentScript?: boolean }).__qwackyContentScript = true
 
-  if (message.type === 'fill-address') {
-    const activeElement = document.activeElement as HTMLElement | null
-    const filled = fillInput(activeElement, message.address)
+  api.runtime.onMessage.addListener(async (message, _sender) => {
+    if (!setupConnection()) return;
 
-    const copied = await copyToClipboard(`${message.address}@duck.com`);
-    
-    if (!filled) {
-      showNotification(copied 
-        ? 'Could not fill input, address copied to clipboard' 
-        : 'Could not fill input or copy to clipboard. Please check permissions in settings.');
-    } else {
-      showNotification(copied 
-        ? 'Address filled and copied to clipboard' 
-        : 'Address filled but could not copy to clipboard. Please check permissions in settings.');
+    if (message.type === 'fill-address') {
+      const activeElement = document.activeElement as HTMLElement | null
+      const filled = fillInput(activeElement, message.address)
+
+      const copied = await copyToClipboard(`${message.address}@duck.com`);
+
+      if (!filled) {
+        showNotification(copied
+          ? 'Could not fill input, address copied to clipboard'
+          : 'Could not fill input or copy to clipboard. Please check permissions in settings.');
+      } else {
+        showNotification(copied
+          ? 'Address filled and copied to clipboard'
+          : 'Address filled but could not copy to clipboard. Please check permissions in settings.');
+      }
     }
-  }
 
-  if (message.type === 'show-notification') {
-    showNotification(message.message)
-  }
-})
+    if (message.type === 'replace-selection') {
+      const replaced = replaceSelection(message.text, message.find)
+      const copied = await copyToClipboard(message.text)
+
+      if (!replaced) {
+        showNotification(copied
+          ? 'Could not replace selection, address copied to clipboard'
+          : 'Could not replace selection or copy to clipboard. Please check permissions in settings.');
+      } else {
+        showNotification(copied
+          ? 'Converted and copied to clipboard'
+          : 'Converted, but could not copy to clipboard. Please check permissions in settings.');
+      }
+    }
+
+    if (message.type === 'show-notification') {
+      showNotification(message.message)
+    }
+  })
+}
 
 export {}

@@ -21,7 +21,9 @@ const duckService = new DuckService()
 const syncService = new SyncService()
 
 const FEATURE_STATE_KEY = 'contextMenuEnabled'
+const PARENT_MENU_ID = 'qwacky-menu'
 const CONTEXT_MENU_ID = 'generate-duck-address'
+const CONVERT_MENU_ID = 'convert-send-address'
 const isFirefox = navigator.userAgent.toLowerCase().includes('firefox')
 const isAndroid = navigator.userAgent.toLowerCase().includes('android')
 
@@ -88,21 +90,28 @@ const ContextMenu = {
 
       return new Promise<boolean>((resolve) => {
         api.contextMenus.create({
-          id: CONTEXT_MENU_ID,
-          title: 'Autofill Duck Address',
+          id: PARENT_MENU_ID,
+          title: 'Qwacky',
           contexts: ['editable']
         }, () => {
           const error = chrome.runtime.lastError;
-          if (error?.message?.includes('already exists')) {
-            this.menuExists = true;
-            resolve(true);
-            return;
-          }
-          if (error) {
+          if (error && !error.message?.includes('already exists')) {
             resolve(false);
             return;
           }
           this.menuExists = true;
+          api.contextMenus.create({
+            id: CONTEXT_MENU_ID,
+            parentId: PARENT_MENU_ID,
+            title: 'Autofill duck address',
+            contexts: ['editable']
+          }, () => { void chrome.runtime.lastError; });
+          api.contextMenus.create({
+            id: CONVERT_MENU_ID,
+            parentId: PARENT_MENU_ID,
+            title: 'Convert to send address',
+            contexts: ['editable']
+          }, () => { void chrome.runtime.lastError; });
           resolve(true);
         });
       });
@@ -396,55 +405,135 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return false
 })
 
-if (api.contextMenus) {
-  api.contextMenus.onClicked.addListener(async (info, tab) => {
-    if (info.menuItemId !== CONTEXT_MENU_ID || !tab?.id || tab.id < 0) return
+const performConvert = async (tabId: number, selectionText: string) => {
+  try {
+    await api.scripting.executeScript({
+      target: { tabId },
+      files: ['contentScript.js']
+    })
 
-    try {
-      let domain = ''
-      if (tab.url) {
-        try {
-          domain = new URL(tab.url).hostname
-        } catch {}
-      }
-
-      const response = await duckService.generateAddress(domain || undefined)
-      if (response.status === 'error') {
-        try {
-          await api.tabs.sendMessage(tab.id, {
-            type: 'show-notification',
-            message: response.message || 'Failed to generate address. Login required?'
-          });
-        } catch {
-        }
-        return
-      }
-
-      await api.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['contentScript.js']
-      })
-
+    const selection = (selectionText || '').trim()
+    const match = selection.match(/[^\s@]+@[^\s@]+\.[^\s@]+/)
+    const email = match?.[0]
+    if (!email) {
       try {
-        await api.tabs.sendMessage(tab.id, {
-          type: 'fill-address',
-          address: response.address
+        await api.tabs.sendMessage(tabId, {
+          type: 'show-notification',
+          message: 'Select a recipient email to convert'
         });
       } catch {
       }
-    } catch (error) {
-      console.error('Error in context menu handler:', error)
+      return
+    }
+
+    const userData = await duckService.getUserData()
+    if (!userData?.user?.username) {
+      try {
+        await api.tabs.sendMessage(tabId, {
+          type: 'show-notification',
+          message: 'You need to login first'
+        });
+      } catch {
+      }
+      return
+    }
+
+    const alias = email.replace('@', '_at_') + '_' + userData.user.username + '@duck.com'
+    await duckService.saveReverseAlias(email, alias)
+
+    try {
+      await api.tabs.sendMessage(tabId, {
+        type: 'replace-selection',
+        text: alias,
+        find: email
+      });
+    } catch {
+    }
+  } catch (error) {
+    console.error('Error converting selection:', error)
+  }
+}
+
+if (api.contextMenus) {
+  api.contextMenus.onClicked.addListener(async (info, tab) => {
+    if (!tab?.id || tab.id < 0) return
+
+    if (info.menuItemId === CONTEXT_MENU_ID) {
+      try {
+        let domain = ''
+        if (tab.url) {
+          try {
+            domain = new URL(tab.url).hostname
+          } catch {}
+        }
+
+        const response = await duckService.generateAddress(domain || undefined)
+        if (response.status === 'error') {
+          try {
+            await api.tabs.sendMessage(tab.id, {
+              type: 'show-notification',
+              message: response.message || 'Failed to generate address. Login required?'
+            });
+          } catch {
+          }
+          return
+        }
+
+        await api.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['contentScript.js']
+        })
+
+        try {
+          await api.tabs.sendMessage(tab.id, {
+            type: 'fill-address',
+            address: response.address
+          });
+        } catch {
+        }
+      } catch (error) {
+        console.error('Error in context menu handler:', error)
+      }
+      return
+    }
+
+    if (info.menuItemId === CONVERT_MENU_ID) {
+      await performConvert(tab.id, info.selectionText || '')
+      return
     }
   })
 }
 
 if (api.commands) {
   api.commands.onCommand.addListener(async (command) => {
-    if (command !== 'generate-duck-address') return
+    if (command !== 'generate-duck-address' && command !== 'convert-send-address') return
 
     try {
       const [activeTab] = await api.tabs.query({ active: true, currentWindow: true })
       if (!activeTab?.id || activeTab.id < 0) return
+
+      if (command === 'convert-send-address') {
+        let selection = ''
+        try {
+          const results = await api.scripting.executeScript({
+            target: { tabId: activeTab.id },
+            func: () => {
+              const el = document.activeElement
+              if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+                const start = el.selectionStart
+                const end = el.selectionEnd
+                if (start !== null && end !== null && start !== end) return el.value.substring(start, end)
+                return ''
+              }
+              return (window.getSelection && window.getSelection()?.toString()) || ''
+            }
+          })
+          selection = String(results?.[0]?.result || '')
+        } catch {}
+
+        await performConvert(activeTab.id, selection)
+        return
+      }
 
       let domain = ''
       if (activeTab.url) {

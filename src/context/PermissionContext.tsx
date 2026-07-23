@@ -51,8 +51,8 @@ export const PERMISSIONS: Record<PermissionType, Permission> = {
   contextMenuFeatures: {
     name: 'Autofill',
     description: isFirefox
-      ? '`activeTab`, `clipboardWrite` and `scripting`\nEnables "Autofill Duck Address" option in the context menu, To generate and copy duck address to the clipboard'
-      : '`contextMenus`, `activeTab`, `clipboardWrite` and `scripting`\nEnables "Autofill Duck Address" option in the context menu, To generate and copy duck address to the clipboard',
+      ? '`activeTab`, `clipboardWrite` and `scripting`\nEnables the Qwacky options in the context menu, to generate a duck address or convert a recipient into a send address'
+      : '`contextMenus`, `activeTab`, `clipboardWrite` and `scripting`\nEnables the Qwacky options in the context menu, to generate a duck address or convert a recipient into a send address',
     isRequired: false,
     permissions: [
       'activeTab',
