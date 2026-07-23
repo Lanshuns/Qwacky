@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.1.0
+
+### Added
+- **Convert to send address** - turn a selected recipient into a reverse alias straight from the right-click menu or with a keyboard shortcut (Alt+Shift+S)
+- **Delete your Duck account** - you can now delete your DuckDuckGo account directly from Qwacky
+- **Remove account local data** - delete an account's saved addresses and reverse aliases from this device and from sync, without touching your DuckDuckGo account
+- **Appearance settings** - pick a light, dark, or system theme and switch between 12-hour and 24-hour time
+- **Import from a text file** - bulk-import existing @duck.com addresses from a plain .txt list, one per line
+
+### Fixed
+- **DuckDuckGo sign-in** - logging in at duckduckgo.com/email no longer gets stuck when Qwacky is installed
+- **Firefox references** - Firefox builds now point to Firefox Add-ons and describe sync storage correctly instead of showing Chrome and Google
+- **Support link** - the heart icon and About page now open the correct readme section
+
+### Changed
+- **Manage your Duck account** - the "Change forwarding address" button is now "Manage your Duck account", where you can change your forwarding address or delete your account
+- **Theme moved to settings** - the theme picker lives in the new Appearance section instead of the header
+
 ## 2.0.0
 
 ### Added
