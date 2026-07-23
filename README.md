@@ -16,25 +16,35 @@
 
 Qwacky solves this by providing a lightweight, standalone alternative focused entirely on the email protection service, packed with extra features you won't find in the original extension.
 
-## 📥 Download
+# 📥 Download
 
-<p align="center">
-<a href="https://chromewebstore.google.com/detail/qwacky/kieehbhdbincplacegpjdkoglfakboeo"><img src="https://user-images.githubusercontent.com/585534/107280622-91a8ea80-6a26-11eb-8d07-77c548b28665.png" alt="Get Qwacky for Chrome"></a>
-<a href="https://addons.mozilla.org/en-US/firefox/addon/qwacky/"><img src="https://user-images.githubusercontent.com/585534/107280546-7b9b2a00-6a26-11eb-8f9f-f95932f4bfec.png" alt="Get Qwacky for Firefox"></a>
-</p>
+<table align="center">
+  <tr>
+    <td align="center" width="50%">
+      <a href="https://chromewebstore.google.com/detail/qwacky/kieehbhdbincplacegpjdkoglfakboeo"><img src="https://user-images.githubusercontent.com/585534/107280622-91a8ea80-6a26-11eb-8d07-77c548b28665.png" alt="Get Qwacky for Chrome"></a>
+      <br><br>
+      <a href="https://chromewebstore.google.com/detail/qwacky/kieehbhdbincplacegpjdkoglfakboeo"><img src="https://img.shields.io/chrome-web-store/users/kieehbhdbincplacegpjdkoglfakboeo?label=users" alt="Chrome Web Store users"></a>
+      <a href="https://chromewebstore.google.com/detail/qwacky/kieehbhdbincplacegpjdkoglfakboeo"><img src="https://img.shields.io/chrome-web-store/rating/kieehbhdbincplacegpjdkoglfakboeo?label=rating" alt="Chrome Web Store rating"></a>
+    </td>
+    <td align="center" width="50%">
+      <a href="https://addons.mozilla.org/en-US/firefox/addon/qwacky/"><img src="https://user-images.githubusercontent.com/585534/107280546-7b9b2a00-6a26-11eb-8f9f-f95932f4bfec.png" alt="Get Qwacky for Firefox"></a>
+      <br><br>
+      <a href="https://addons.mozilla.org/en-US/firefox/addon/qwacky/"><img src="https://img.shields.io/amo/users/qwacky?label=users" alt="Firefox Add-ons users"></a>
+      <a href="https://addons.mozilla.org/en-US/firefox/addon/qwacky/"><img src="https://img.shields.io/amo/rating/qwacky?label=rating" alt="Firefox Add-ons rating"></a>
+    </td>
+  </tr>
+</table>
 
-## ✨ Features
-- Generate and manage private @duck.com email addresses
-- Copy generated addresses to clipboard with one click
-- Auto-fill email fields from context menu or keyboard shortcut (`Alt+Shift+Q`)
-- Reverse alias support to convert any email into a duck.com address for sending
-- Notes and tags for each generated address with search and filtering
-- My Account page to view profile, email stats, and manage forwarding address
-- Multiple accounts support
-- Backup and restore with selective account export
-- Cross-device sync for addresses, reverse aliases, and session data
+# ✨ Features
+- **Private @duck.com addresses:** generate and manage aliases without the full DuckDuckGo extension
+- **Autofill anywhere:** fill any email field from the right-click menu or a keyboard shortcut
+- **Send privately:** turn any recipient into a duck.com address so your real one stays hidden
+- **Stay organized:** notes, tags, search and filtering across all your addresses
+- **Multiple accounts:** manage and switch between duck accounts in one place
+- **Your data, portable:** cross-device sync, plus backup and restore
+- **And more!**
 
-### Browser Compatibility
+## Browser Compatibility
 
 Qwacky is designed to work seamlessly on both Chrome and Firefox. The build process automatically handles browser-specific requirements:
 
@@ -43,7 +53,7 @@ Qwacky is designed to work seamlessly on both Chrome and Firefox. The build proc
 
 Both versions maintain feature parity while adhering to each browser's best practices and security models.
 
-## 📸 Screenshots
+# 📸 Screenshots
 ![Qwacky Banner](assets/images/banner2.png)
 > **A big thanks to [@m.miriam12398](https://www.instagram.com/m.miriam12398/) for contributing by making such a cool designs for the project!**
 
@@ -54,7 +64,7 @@ Both versions maintain feature parity while adhering to each browser's best prac
 - Manifest V3 for better security
 - Open source for transparency
 
-### Permissions
+## Permissions
 - `Storage`: Required to store your generated addresses and settings locally
 - `Context Menu Autofill`: This toggle enables generating aliases from the context menu, auto-detecting email fields, It requires the following optional permissions:
   - `contextMenus`: Enables the context menu for quick address generation
@@ -62,7 +72,7 @@ Both versions maintain feature parity while adhering to each browser's best prac
   - `clipboardWrite`: Needed to copy the generated address to the clipboard
   - `scripting`: Required for programmatically injecting the content script when using the context menu
 
-### Browser-Specific Permission Handling and Limitations
+## Browser-Specific Permission Handling and Limitations
 
 Firefox and Chrome differ in how they manage and display extension permissions like `contextMenus`:
 
@@ -80,14 +90,14 @@ This difference in behavior is a known limitation in Chrome and has been discuss
 
 # 🛠️ Manual Installation
 
-#### Chrome
+### Chrome
 1. Download the latest release from the [GitHub Releases](https://github.com/Lanshuns/Qwacky/releases) page
 2. Unzip the downloaded file
 3. Open Chrome and go to `chrome://extensions/`
 4. Enable "Developer mode" in the top right
 5. Click "Load unpacked" and select the unzipped folder
 
-#### Firefox
+### Firefox
 1. Download the Firefox version (.xpi file) from the [GitHub Releases](https://github.com/Lanshuns/Qwacky/releases) page
 2. Open Firefox and go to `about:addons`
 3. Click the gear icon and select "Install Add-on From File..."
@@ -95,11 +105,11 @@ This difference in behavior is a known limitation in Chrome and has been discuss
 
 # 💻 Development
 
-### Prerequisites
+## Prerequisites
 - Node.js (v16 or higher)
 - npm (v7 or higher)
 
-### Setup
+## Setup
 ```bash
 # 1. Clone the repository
 git clone https://github.com/Lanshuns/Qwacky.git
@@ -108,7 +118,7 @@ cd qwacky
 npm install
 ```
 
-### Development Mode
+## Development Mode
 
 ```bash
 # For Chrome
@@ -117,7 +127,7 @@ npm run dev
 npm run dev:firefox
 ```
 
-### Production Build
+## Production Build
 
 ```bash
 # For Chrome
