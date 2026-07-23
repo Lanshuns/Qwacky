@@ -560,7 +560,7 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
         isOpen={showClearConfirm}
         title={config.clearTitle}
         message={config.clearMessage}
-        confirmLabel="Clear All"
+        confirmLabel="Clear all"
         cancelLabel="Cancel"
         onConfirm={handleClearConfirm}
         onCancel={() => setShowClearConfirm(false)}

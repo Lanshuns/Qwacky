@@ -39,7 +39,7 @@ export const UserInfoSection: React.FC<UserInfoSectionProps> = ({
   return (
     <UserInfoCard>
       <SectionHeader style={hideUserInfo ? { marginBottom: 0 } : undefined}>
-        <h2 id="user-info-heading">My Account</h2>
+        <h2 id="user-info-heading">My account</h2>
         <UserInfoIconButton
           onClick={toggleHideUserInfo}
           aria-label={hideUserInfo ? "Show user information" : "Hide user information"}
@@ -52,7 +52,7 @@ export const UserInfoSection: React.FC<UserInfoSectionProps> = ({
       {!hideUserInfo && (
         <div id="user-info-content" aria-labelledby="user-info-heading">
           <InfoItem>
-            <label className="highlight" id="username-label">Duck Username</label>
+            <label className="highlight" id="username-label">Duck username</label>
             <div
               onClick={(e) => copyToClipboard(`${userData.user.username}@duck.com`, e.nativeEvent)}
               role="button"
@@ -69,7 +69,7 @@ export const UserInfoSection: React.FC<UserInfoSectionProps> = ({
             </div>
           </InfoItem>
           <InfoItem>
-            <label className="highlight" id="email-label">Forwarding Email</label>
+            <label className="highlight" id="email-label">Forwarding email</label>
             <div
               onClick={(e) => copyToClipboard(userData.user.email, e.nativeEvent)}
               role="button"
@@ -86,7 +86,7 @@ export const UserInfoSection: React.FC<UserInfoSectionProps> = ({
             </div>
           </InfoItem>
           <InfoItem>
-            <label className="highlight" id="count-label">Total Generated</label>
+            <label className="highlight" id="count-label">Total generated</label>
             <div aria-labelledby="count-label">
               <span>{addressesCount}</span>
             </div>

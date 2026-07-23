@@ -570,7 +570,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
 
       <Section>
         <SectionHeader>
-          <h2><MdSecurity size={20} style={{ marginRight: '8px' }} />Permissions & Features</h2>
+          <h2><MdSecurity size={20} style={{ marginRight: '8px' }} />Permissions & features</h2>
         </SectionHeader>
         {ALL_PERMISSIONS.map(permission => (
           <PermissionToggle
@@ -634,7 +634,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
             )}
 
             <SyncOptionsContainer>
-              <SyncOptionsTitle>Sync Options</SyncOptionsTitle>
+              <SyncOptionsTitle>Sync options</SyncOptionsTitle>
               <SyncOptionRow>
                 <SyncToggleSwitch>
                   <SyncToggleInput
@@ -707,7 +707,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
 
       <Section>
         <SectionHeader>
-          <h2><MdDescription size={20} style={{ marginRight: '8px' }} />Backup & Restore</h2>
+          <h2><MdDescription size={20} style={{ marginRight: '8px' }} />Backup & restore</h2>
         </SectionHeader>
 
         <ExportButtonsContainer>
@@ -716,14 +716,14 @@ export const Settings = ({ onBack }: SettingsProps) => {
             disabled={loading.export || selectedAccounts.length === 0}
           >
             <MdDownload size={20} />
-            {loading.export ? 'Exporting...' : 'Export Backup'}
+            {loading.export ? 'Exporting...' : 'Export backup'}
           </BackupButton>
           <BackupButton
             onClick={isFirefoxPopup ? () => setShowPopoutPrompt(true) : handleImportClick}
             disabled={loading.import}
           >
             <MdFileUpload size={20} />
-            {loading.import ? 'Importing...' : 'Import Backup'}
+            {loading.import ? 'Importing...' : 'Import backup'}
           </BackupButton>
         </ExportButtonsContainer>
 
@@ -733,7 +733,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
         </ExportOptionHint>
 
         <ExportOptionsContainer>
-          <ExportOptionsTitle>Export Options</ExportOptionsTitle>
+          <ExportOptionsTitle>Export options</ExportOptionsTitle>
 
           {accounts.length > 1 && (
             <DropdownWrapper ref={dropdownRef}>
@@ -795,9 +795,9 @@ export const Settings = ({ onBack }: SettingsProps) => {
       <ConfirmDialog
         isOpen={showPopoutPrompt}
         variant="info"
-        title="Open in New Window"
+        title="Open in new window"
         message="Firefox doesn't allow file selection from the popup. The extension will open in a new window where you can import your backup normally."
-        confirmLabel="Open Window"
+        confirmLabel="Open window"
         cancelLabel="Cancel"
         onConfirm={() => {
           setShowPopoutPrompt(false);
@@ -810,9 +810,9 @@ export const Settings = ({ onBack }: SettingsProps) => {
       <ConfirmDialog
         isOpen={showExportWarning}
         variant="warning"
-        title="Security Warning"
+        title="Security warning"
         message="The exported file will contain your access token and login credentials. Keep this file secure and do not share it. Anyone with this file can access your DuckDuckGo Email account."
-        confirmLabel="Export Anyway"
+        confirmLabel="Export anyway"
         cancelLabel="Cancel"
         onConfirm={() => {
           setShowExportWarning(false);
@@ -824,7 +824,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
       <ConfirmDialog
         isOpen={showImportConfirm}
         variant="warning"
-        title="Import Backup"
+        title="Import backup"
         message="This backup contains session data. Importing it will add the accounts and their data to your extension. Are you sure?"
         confirmLabel="Import"
         cancelLabel="Cancel"
@@ -838,7 +838,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
       <ConfirmDialog
         isOpen={backupSummary !== null}
         variant="info"
-        title={backupSummary?.action === 'export' ? 'Export Complete' : 'Import Complete'}
+        title={backupSummary?.action === 'export' ? 'Export complete' : 'Import complete'}
         message={backupSummary ? buildSummaryMessage(backupSummary) : ''}
         confirmLabel="Close"
         singleButton

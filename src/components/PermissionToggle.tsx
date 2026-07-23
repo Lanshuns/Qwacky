@@ -279,7 +279,7 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
       )}
       <ConfirmDialog
         isOpen={showPermissionsNotice}
-        title="Permissions Notice"
+        title="Permissions notice"
         message={<FirefoxPermissionNotice />}
         confirmLabel="Done"
         onConfirm={handleNoticeDone}
@@ -288,7 +288,7 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
       />
       <ConfirmDialog
         isOpen={showChromeNotice}
-        title="Permissions Notice"
+        title="Permissions notice"
         message={<ChromePermissionNotice />}
         confirmLabel="Done"
         onConfirm={handleChromeNoticeDone}

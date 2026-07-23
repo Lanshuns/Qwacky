@@ -320,7 +320,7 @@ export const App = () => {
         <ConfirmDialog
           isOpen={autoLoginAccount !== null}
           variant="info"
-          title="Logged In Successfully"
+          title="Logged in successfully"
           message={`Automatically logged in as ${autoLoginAccount}@duck.com`}
           confirmLabel="Got it"
           singleButton
@@ -329,7 +329,7 @@ export const App = () => {
         <ConfirmDialog
           isOpen={autoLoginError !== null}
           variant="warning"
-          title="Auto-Login Failed"
+          title="Auto-login failed"
           message={autoLoginError || ''}
           confirmLabel="OK"
           singleButton

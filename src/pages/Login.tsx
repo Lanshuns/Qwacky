@@ -138,7 +138,7 @@ export const Login = ({ onSubmit, isAddingAccount, onBack }: LoginProps) => {
       <ConfirmDialog
         isOpen={showSignupDialog}
         variant="info"
-        title="Create a Duck Address"
+        title="Create a duck address"
         message="You'll be redirected to DuckDuckGo to create your @duck.com address. Once you complete the signup, you'll be automatically logged in."
         confirmLabel="Continue to DuckDuckGo"
         cancelLabel="Cancel"

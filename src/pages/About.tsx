@@ -30,17 +30,17 @@ export const About = ({ onBack }: AboutProps) => {
       <LinksSection>
         <LinkItem href="https://github.com/Lanshuns/Qwacky#-support-the-project" target="_blank" rel="noopener noreferrer">
           <MdFavorite size={20} />
-          Support the Project
+          Support the project
           <MdOpenInNew size={16} />
         </LinkItem>
         <LinkItem href="https://github.com/Lanshuns/Qwacky" target="_blank" rel="noopener noreferrer">
           <FaGithub size={20} />
-          GitHub Repository
+          GitHub repository
           <MdOpenInNew size={16} />
         </LinkItem>
         <LinkItem href={STORE_URL} target="_blank" rel="noopener noreferrer">
           <MdOpenInNew size={20} />
-          {isFirefox ? 'Firefox Add-ons' : 'Chrome Web Store'}
+          {isFirefox ? 'Firefox add-ons' : 'Chrome web store'}
           <MdOpenInNew size={16} />
         </LinkItem>
       </LinksSection>

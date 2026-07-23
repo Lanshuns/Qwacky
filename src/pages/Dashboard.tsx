@@ -37,14 +37,14 @@ interface StoredAddress {
 }
 
 const GENERATE_LIST_CONFIG: ListConfig = {
-  title: "Generated Addresses",
+  title: "Generated addresses",
   itemsLabel: "addresses",
   emptyTitle: "No addresses yet",
   emptySubtitle: "Click the button above to generate your first address",
   searchPlaceholder: "Search addresses or notes...",
-  deleteTitle: "Delete Address",
+  deleteTitle: "Delete address",
   getDeleteMessage: (key) => `Are you sure you want to delete this address\n(${key}@duck.com)?`,
-  clearTitle: "Clear All Addresses",
+  clearTitle: "Clear all addresses",
   clearMessage: "Are you sure you want to clear all addresses?\n\nThis action cannot be undone.",
   hideStorageKey: "hide_generated_addresses",
 };
@@ -55,9 +55,9 @@ const SEND_LIST_CONFIG: ListConfig = {
   emptyTitle: "No history yet",
   emptySubtitle: "Convert a recipient email above to get started",
   searchPlaceholder: "Search emails or notes...",
-  deleteTitle: "Delete Reverse Alias",
+  deleteTitle: "Delete reverse alias",
   getDeleteMessage: (key) => `Are you sure you want to delete the reverse alias for\n${key}?`,
-  clearTitle: "Clear All History",
+  clearTitle: "Clear all history",
   clearMessage: "Are you sure you want to clear all reverse alias history?\n\nThis action cannot be undone.",
   hideStorageKey: "hide_reverse_aliases",
 };
@@ -319,7 +319,7 @@ export const Dashboard = () => {
       {activeTab === 'generate' && (
         <>
           <GenerateButton onClick={generateNewAddress} disabled={loading}>
-            {loading ? "Generating..." : "Generate New Address"}
+            {loading ? "Generating..." : "Generate new address"}
           </GenerateButton>
           <ItemListSection
             items={addressItems}

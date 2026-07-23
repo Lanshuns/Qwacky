@@ -169,7 +169,7 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
                     <AccountsMenuWrapper isOpen={accountsListOpen}>
                       <DropdownItem onClick={() => setAccountsListOpen(!accountsListOpen)}>
                         <MdSwapHoriz size={20} />
-                        Switch Account
+                        Switch account
                         <MdKeyboardArrowDown
                           size={20}
                           style={{
@@ -198,11 +198,11 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
                   {accountsListOpen && <DropdownDivider />}
                   <DropdownItem onClick={() => handleMenuItemClick(onAddAccountClick)}>
                     <MdPersonAdd size={20} />
-                    Add Account
+                    Add account
                   </DropdownItem>
                   <DropdownItem onClick={() => handleMenuItemClick(onMyAccountClick)}>
                     <MdManageAccounts size={20} />
-                    My Account
+                    My account
                   </DropdownItem>
                   <DropdownDivider />
                 </>
@@ -235,7 +235,7 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
 
       <ConfirmDialog
         isOpen={showLogoutConfirm}
-        title="Confirm Logout"
+        title="Confirm logout"
         message="Are you sure you want to log out?"
         confirmLabel="Log out"
         cancelLabel="Cancel"
@@ -246,7 +246,7 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
       {showNicknameDialog && (
         <NicknameEditDialog onClick={() => setShowNicknameDialog(false)}>
           <NicknameDialogContent onClick={(e) => e.stopPropagation()}>
-            <NicknameDialogTitle>Edit Account Nickname</NicknameDialogTitle>
+            <NicknameDialogTitle>Edit account nickname</NicknameDialogTitle>
             <NicknameDialogSubtitle>
               Set a custom nickname for <strong>{currentAccount}</strong>
             </NicknameDialogSubtitle>
