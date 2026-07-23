@@ -103,6 +103,15 @@ export class DuckService {
     }
   }
 
+  async deleteAccount(username: string): Promise<{ status: 'success' | 'error'; loggedOut?: boolean; message?: string }> {
+    try {
+      return await this.storage.deleteAccount(username)
+    } catch (error: unknown) {
+      console.error('Error deleting account:', error)
+      return { status: 'error', message: error instanceof Error ? error.message : 'Unknown error deleting account' }
+    }
+  }
+
   async logout(): Promise<{ success: boolean, message?: string }> {
     try {
       await this.storage.clearStorage()

@@ -15,7 +15,7 @@ const postDeviceSignedIn = (userData: DeviceUserData) => {
     deviceSignedIn: {
       value: true,
       userData,
-      capabilities: {}
+      capabilities: { removeUserData: true }
     }
   }, window.location.origin);
 };

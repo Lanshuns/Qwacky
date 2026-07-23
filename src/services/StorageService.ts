@@ -370,6 +370,54 @@ export class StorageService {
     await chrome.storage.local.clear();
   }
 
+  async deleteAccount(username: string): Promise<{ status: 'success' | 'error'; loggedOut?: boolean; message?: string }> {
+    try {
+      if (!username) {
+        return { status: 'error', message: 'Username is required' };
+      }
+
+      const result = await chrome.storage.local.get(['accounts', 'currentAccount', 'generated_addresses']);
+      const accounts: Array<{ userData: UserData; username: string; lastUsed: number }> =
+        Array.isArray(result.accounts) ? result.accounts : [];
+      const remaining = accounts.filter(acc => acc.username !== username);
+
+      await chrome.storage.local.remove([`addresses_${username}`, `reverse_aliases_${username}`]);
+
+      const globalAddresses: Address[] = Array.isArray(result.generated_addresses) ? result.generated_addresses : [];
+      const prunedGlobal = globalAddresses.filter(addr => addr.username !== username);
+
+      const updates: Record<string, unknown> = {
+        accounts: remaining,
+        generated_addresses: prunedGlobal,
+      };
+
+      let loggedOut = false;
+      if (result.currentAccount === username) {
+        if (remaining.length > 0) {
+          const next = [...remaining].sort((a, b) => b.lastUsed - a.lastUsed)[0];
+          updates.currentAccount = next.username;
+          updates.user_data = next.userData;
+          updates.access_token = next.userData.user.access_token;
+        } else {
+          loggedOut = true;
+        }
+      }
+
+      await chrome.storage.local.set(updates);
+
+      if (loggedOut) {
+        await chrome.storage.local.remove(['currentAccount', 'user_data', 'access_token']);
+        await chrome.storage.local.set({ loginState: 'login' });
+      }
+
+      await this.syncService.removeAccountFromSync(username);
+
+      return { status: 'success', loggedOut };
+    } catch (error) {
+      return { status: 'error', message: error instanceof Error ? error.message : 'Failed to delete account' };
+    }
+  }
+
   async getHideUserInfo(): Promise<boolean> {
     const result = await chrome.storage.local.get('hide_user_info');
     return result.hide_user_info || false;

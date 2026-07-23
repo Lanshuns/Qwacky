@@ -24,6 +24,7 @@ interface AppContextType {
   currentAccount: string | null;
   switchAccount: (username: string) => Promise<void>;
   removeAccount: (username: string) => Promise<void>;
+  deleteCurrentAccount: () => Promise<{ status: 'success' | 'error'; loggedOut?: boolean; message?: string }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -290,10 +291,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (username === currentAccount) {
       return
     }
-    
+
     const updatedAccounts = accounts.filter(acc => acc.username !== username)
     setAccounts(updatedAccounts)
     await chrome.storage.local.set({ accounts: updatedAccounts })
+  }
+
+  const deleteCurrentAccount = async () => {
+    if (!currentAccount) {
+      return { status: 'error' as const, message: 'No account is currently selected' }
+    }
+
+    const result = await duckService.deleteAccount(currentAccount)
+    if (result.status !== 'success') {
+      return result
+    }
+
+    const stored = await chrome.storage.local.get(['accounts', 'currentAccount', 'user_data'])
+    const remaining = Array.isArray(stored.accounts) ? stored.accounts : []
+    setAccounts(remaining)
+
+    if (stored.currentAccount) {
+      setCurrentAccount(stored.currentAccount)
+      setUserData(stored.user_data || null)
+    } else {
+      setCurrentAccount(null)
+      setUserData(null)
+    }
+
+    return result
   }
 
   return (
@@ -308,13 +334,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       accounts,
       currentAccount,
       switchAccount,
-      removeAccount
+      removeAccount,
+      deleteCurrentAccount
     }}>
       {children}
       <ConfirmDialog
         isOpen={syncSessionPrompt !== null}
         variant="info"
-        title="Synced Accounts Found"
+        title="Synced accounts found"
         message={syncSessionPrompt ? `Found ${syncSessionPrompt.newAccounts.length} synced account(s): ${syncSessionPrompt.newAccounts.map(u => u + '@duck.com').join(', ')}. Would you like to restore them?` : ''}
         confirmLabel="Restore"
         cancelLabel="Cancel"

@@ -948,3 +948,30 @@ export const ManageAccountButton = styled.button`
     color: ${props => props.theme.textTertiary};
   }
 `
+
+export const DeleteAccountButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid ${props => `${props.theme.error}55`};
+  border-radius: 8px;
+  background: ${props => `${props.theme.error}10`};
+  color: ${props => props.theme.error};
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 10px;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: ${props => props.theme.error};
+    background: ${props => `${props.theme.error}1f`};
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+`

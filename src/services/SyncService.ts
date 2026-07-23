@@ -768,6 +768,56 @@ export class SyncService {
     }
   }
 
+  async removeAccountFromSync(username: string): Promise<void> {
+    try {
+      await chrome.storage.sync.remove([
+        `addresses_${username}`,
+        `reverse_aliases_${username}`,
+        `total_count_${username}`,
+      ]);
+      await this.clearSessionCache(`addresses_${username}`);
+      await this.clearSessionCache(`reverse_aliases_${username}`);
+
+      const result = await chrome.storage.sync.get('session_data');
+      if (!result.session_data) return;
+
+      let sessionData: SessionSyncData;
+      try {
+        sessionData = JSON.parse(await this.decompressData(result.session_data));
+      } catch {
+        return;
+      }
+      if (!Array.isArray(sessionData.accounts)) return;
+
+      const remaining = sessionData.accounts.filter(acc => acc.username !== username);
+      if (remaining.length === sessionData.accounts.length) return;
+
+      if (remaining.length === 0) {
+        await chrome.storage.sync.remove('session_data');
+        return;
+      }
+
+      const updated: SessionSyncData = {
+        ...sessionData,
+        accounts: remaining,
+        currentAccount: sessionData.currentAccount === username
+          ? remaining[0].username
+          : sessionData.currentAccount,
+      };
+      const jsonData = JSON.stringify(updated);
+      const dataToStore = jsonData.length > SyncService.COMPRESSION_THRESHOLD
+        ? await this.compressData(jsonData)
+        : jsonData;
+
+      await chrome.storage.sync.set({
+        session_data: dataToStore,
+        [SyncService.SYNC_LAST_SYNC_KEY]: Date.now(),
+      });
+    } catch (error) {
+      console.error('Error removing account from sync:', error);
+    }
+  }
+
   async getSessionFromSync(): Promise<SessionSyncData | null> {
     const options = await this.getSyncOptions();
     if (!options.enabled || !options.session) {
