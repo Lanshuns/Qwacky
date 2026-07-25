@@ -1,0 +1,18 @@
+{
+  "extensionName": {
+    "message": "Qwacky",
+    "description": "Extension name shown in the browser and stores."
+  },
+  "extensionDescription": {
+    "message": "Qwacky is an open source client for DuckDuckGo Email Protection, To manage and generate @duck.com aliases.",
+    "description": "Extension description shown in the browser and stores."
+  },
+  "commandGenerateAddress": {
+    "message": "Generate and fill duck address",
+    "description": "Keyboard shortcut description."
+  },
+  "commandConvertAddress": {
+    "message": "Convert the selected recipient into a send address",
+    "description": "Keyboard shortcut description."
+  }
+}

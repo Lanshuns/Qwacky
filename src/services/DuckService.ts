@@ -2,6 +2,7 @@ import { AuthService } from './AuthService'
 import { StorageService } from './StorageService'
 import { ImportExportService, ImportAddressesResult } from './ImportExportService'
 import { LoginResponse, VerifyResponse, GenerateResponse, UserData, ReverseAlias } from '../types'
+import { t } from '../i18n/core'
 
 export class DuckService {
   private auth: AuthService
@@ -17,7 +18,7 @@ export class DuckService {
   async login(username: string): Promise<LoginResponse> {
     try {
       if (!username || typeof username !== 'string' || username.trim() === '') {
-        return { status: 'error', message: 'Username is required' }
+        return { status: 'error', message: t('error.usernameRequired') }
       }
       
       const response = await this.auth.requestOTP(username)
@@ -26,7 +27,7 @@ export class DuckService {
       console.error('Login error:', error)
       return { 
         status: 'error', 
-        message: error instanceof Error ? error.message : 'An unexpected error occurred during login' 
+        message: error instanceof Error ? error.message : t('error.unexpectedLogin') 
       }
     }
   }
@@ -34,11 +35,11 @@ export class DuckService {
   async verifyOTP(username: string, otp: string): Promise<VerifyResponse> {
     try {
       if (!username || typeof username !== 'string' || username.trim() === '') {
-        return { status: 'error', message: 'Username is required' }
+        return { status: 'error', message: t('error.usernameRequired') }
       }
       
       if (!otp || typeof otp !== 'string' || otp.trim() === '') {
-        return { status: 'error', message: 'OTP is required' }
+        return { status: 'error', message: t('error.otpRequired') }
       }
       
       const response = await this.auth.verifyOTP(username, otp)
@@ -55,7 +56,7 @@ export class DuckService {
       console.error('OTP verification error:', error)
       return { 
         status: 'error', 
-        message: error instanceof Error ? error.message : 'An unexpected error occurred during verification' 
+        message: error instanceof Error ? error.message : t('error.unexpectedVerify') 
       }
     }
   }
@@ -64,17 +65,17 @@ export class DuckService {
     try {
       const userData = await this.storage.getUserData()
       if (!userData) {
-        return { status: 'error', message: 'You need to login first' }
+        return { status: 'error', message: t('error.notAuthenticated') }
       }
       
       if (!userData.user || !userData.user.access_token) {
-        return { status: 'error', message: 'Invalid user data. Please log in again.' }
+        return { status: 'error', message: t('error.invalidUserData') }
       }
       
       const response = await this.auth.generateAddress(userData.user.access_token)
       if (response.status === 'success') {
         if (!response.address) {
-          return { status: 'error', message: 'No address returned from the server' }
+          return { status: 'error', message: t('error.noAddressReturned') }
         }
         
         await this.storage.saveGeneratedAddress(response.address, notes)
@@ -89,7 +90,7 @@ export class DuckService {
       console.error('Error generating address:', error)
       return { 
         status: 'error', 
-        message: error instanceof Error ? error.message : 'Unknown error generating address'
+        message: error instanceof Error ? error.message : t('error.unknownGenerate')
       }
     }
   }
@@ -108,7 +109,7 @@ export class DuckService {
       return await this.storage.deleteAccount(username)
     } catch (error: unknown) {
       console.error('Error deleting account:', error)
-      return { status: 'error', message: error instanceof Error ? error.message : 'Unknown error deleting account' }
+      return { status: 'error', message: error instanceof Error ? error.message : t('error.unknownDeleteAccount') }
     }
   }
 
@@ -120,7 +121,7 @@ export class DuckService {
       console.error('Error during logout:', error)
       return { 
         success: false, 
-        message: error instanceof Error ? error.message : 'Unknown error during logout'
+        message: error instanceof Error ? error.message : t('error.unknownLogout')
       }
     }
   }
@@ -195,7 +196,7 @@ export class DuckService {
         count: 0,
         duplicates: 0,
         invalid: 0,
-        error: error instanceof Error ? error.message : 'Unknown error importing addresses'
+        error: error instanceof Error ? error.message : t('error.unknownImportAddresses')
       }
     }
   }
@@ -210,7 +211,7 @@ export class DuckService {
         count: 0,
         duplicates: 0,
         invalid: 0,
-        error: error instanceof Error ? error.message : 'Unknown error importing addresses'
+        error: error instanceof Error ? error.message : t('error.unknownImportAddresses')
       }
     }
   }
@@ -279,7 +280,7 @@ export class DuckService {
       return await this.importExport.exportBackup(selectedAccounts, includeSession)
     } catch (error: unknown) {
       console.error('Error exporting backup:', error)
-      throw new Error(error instanceof Error ? error.message : 'Failed to export backup')
+      throw new Error(error instanceof Error ? error.message : t('error.exportBackupFailed'))
     }
   }
 
@@ -291,7 +292,7 @@ export class DuckService {
       return {
         success: false,
         hasSession: false,
-        error: error instanceof Error ? error.message : 'Unknown error importing backup'
+        error: error instanceof Error ? error.message : t('error.unknownImportBackup')
       }
     }
   }

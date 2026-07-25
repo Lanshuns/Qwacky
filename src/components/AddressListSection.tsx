@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { MdVisibility, MdVisibilityOff, MdEdit, MdCheck, MdClose, MdDelete, MdDeleteSweep, MdSearch, MdSort, MdClear, MdLabel, MdExpandMore, MdExpandLess } from "react-icons/md";
 import { ConfirmDialog } from './ConfirmDialog';
 import { SectionHeader } from '../styles/SharedStyles';
+import { Interpolate, TranslationKey, TranslateParams, useI18n } from '../i18n';
 import {
   Section,
   HeaderActions,
@@ -106,7 +107,8 @@ const renderItem = (
   tagInputValue: string,
   setTagInputValue: React.Dispatch<React.SetStateAction<string>>,
   onUpdateTags?: (key: string, tags: string[]) => Promise<void>,
-  allTags?: string[]
+  allTags?: string[],
+  t: (key: TranslationKey, params?: TranslateParams) => string = (key) => key
 ) => {
   const itemTags = item.tags || [];
 
@@ -155,7 +157,7 @@ const renderItem = (
             <TagChip key={tag}>
               {tag}
               {onUpdateTags && (
-                <TagChipRemove onClick={() => handleRemoveTag(tag)} aria-label={`Remove tag ${tag}`}>
+                <TagChipRemove onClick={() => handleRemoveTag(tag)} aria-label={t('list.removeTag', { tag })}>
                   &times;
                 </TagChipRemove>
               )}
@@ -178,13 +180,13 @@ const renderItem = (
                 setTagInputValue('');
               }
             }}
-            placeholder="Add tag..."
+            placeholder={t('list.addTagPlaceholder')}
             autoFocus
           />
-          <IconButton onClick={() => { handleAddTag(tagInputValue); }} aria-label="Add tag">
+          <IconButton onClick={() => { handleAddTag(tagInputValue); }} aria-label={t('list.addTag')}>
             <MdCheck size={16} />
           </IconButton>
-          <IconButton onClick={() => { setEditingTags(null); setTagInputValue(''); }} aria-label="Close tag input">
+          <IconButton onClick={() => { setEditingTags(null); setTagInputValue(''); }} aria-label={t('list.closeTagInput')}>
             <MdClose size={16} />
           </IconButton>
           {suggestions.length > 0 && (
@@ -209,15 +211,15 @@ const renderItem = (
               if (e.key === 'Enter') { e.preventDefault(); handleSaveNotes(); }
               else if (e.key === 'Escape') { e.preventDefault(); handleCancelEdit(); }
             }}
-            placeholder="Add notes..."
-            aria-label="Edit notes"
+            placeholder={t('list.notesPlaceholder')}
+            aria-label={t('list.editNotes')}
             autoFocus={editing.autoFocus}
           />
           <NotesActions>
-            <IconButton onClick={handleSaveNotes} aria-label="Save notes">
+            <IconButton onClick={handleSaveNotes} aria-label={t('list.saveNotes')}>
               <MdCheck size={18} />
             </IconButton>
-            <IconButton onClick={handleCancelEdit} aria-label="Cancel editing">
+            <IconButton onClick={handleCancelEdit} aria-label={t('list.cancelEditing')}>
               <MdClose size={18} />
             </IconButton>
           </NotesActions>
@@ -232,15 +234,15 @@ const renderItem = (
                   setEditingTags(editingTags === item.key ? null : item.key);
                   setTagInputValue('');
                 }}
-                aria-label="Edit tags"
+                aria-label={t('list.editTags')}
               >
                 <MdLabel size={18} />
               </IconButton>
             )}
-            <IconButton onClick={() => handleEditNotes(item)} aria-label="Edit notes">
+            <IconButton onClick={() => handleEditNotes(item)} aria-label={t('list.editNotes')}>
               <MdEdit size={18} />
             </IconButton>
-            <IconButton className="delete" onClick={() => setDeleteConfirm(item.key)} aria-label="Delete">
+            <IconButton className="delete" onClick={() => setDeleteConfirm(item.key)} aria-label={t('common.delete')}>
               <MdDelete size={18} />
             </IconButton>
           </ButtonsContainer>
@@ -275,6 +277,7 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
   const [editingTags, setEditingTags] = useState<string | null>(null);
   const [tagInputValue, setTagInputValue] = useState('');
   const notesInputRef = React.useRef<HTMLInputElement>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     if (autoEditKey) {
@@ -391,10 +394,10 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
       result.push({ name: tag, items: groups.get(tag)! });
     });
     if (untagged.length > 0) {
-      result.push({ name: 'Untagged', items: untagged });
+      result.push({ name: t('list.untagged'), items: untagged });
     }
     return result;
-  }, [filteredAndSorted, groupByTag]);
+  }, [filteredAndSorted, groupByTag, t]);
 
   const cycleSortOrder = useCallback(() => {
     setSortOrder(current => current === 'newest' ? 'oldest' : 'newest');
@@ -412,7 +415,7 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
     });
   }, []);
 
-  const getSortLabel = () => sortOrder === 'newest' ? 'Newest' : 'Oldest';
+  const getSortLabel = () => sortOrder === 'newest' ? t('list.sortNewest') : t('list.sortOldest');
 
   const renderItemCallback = useCallback((item: ListItem, index: number) => {
     return renderItem(
@@ -421,9 +424,9 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
       handleEditNotes, handleSaveNotes, handleCancelEdit,
       setDeleteConfirm,
       editingTags, setEditingTags, tagInputValue, setTagInputValue,
-      onUpdateTags, allTags
+      onUpdateTags, allTags, t
     );
-  }, [copyToClipboard, formatTime, editing, handleEditNotes, handleSaveNotes, handleCancelEdit, editingTags, tagInputValue, onUpdateTags, allTags]);
+  }, [copyToClipboard, formatTime, editing, handleEditNotes, handleSaveNotes, handleCancelEdit, editingTags, tagInputValue, onUpdateTags, allTags, t]);
 
   const itemList = useMemo(() => {
     if (items.length === 0) {
@@ -440,8 +443,8 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
       return (
         <EmptyState>
           <MdSearch />
-          <h3>No results found</h3>
-          <p>Try adjusting your search or filter</p>
+          <h3>{t('list.noResultsTitle')}</h3>
+          <p>{t('list.noResultsSubtitle')}</p>
         </EmptyState>
       );
     }
@@ -468,7 +471,7 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
         {filteredAndSorted.map((item, index) => renderItemCallback(item, index))}
       </AddressList>
     );
-  }, [filteredAndSorted, groupedItems, groupByTag, hidden, config, collapsedGroups, toggleGroup, renderItemCallback, items.length]);
+  }, [filteredAndSorted, groupedItems, groupByTag, hidden, config, collapsedGroups, toggleGroup, renderItemCallback, items.length, t]);
 
   return (
     <>
@@ -477,11 +480,11 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
           <h2>{config.title}</h2>
           <HeaderActions>
             {items.length > 0 && (
-              <IconButton className="clear" onClick={() => setShowClearConfirm(true)} aria-label={`Clear all ${config.itemsLabel}`}>
+              <IconButton className="clear" onClick={() => setShowClearConfirm(true)} aria-label={t('list.clearAllItems', { items: config.itemsLabel })}>
                 <MdDeleteSweep size={24} />
               </IconButton>
             )}
-            <IconButton onClick={toggleHidden} aria-label={hidden ? `Show ${config.itemsLabel}` : `Hide ${config.itemsLabel}`} aria-expanded={!hidden}>
+            <IconButton onClick={toggleHidden} aria-label={hidden ? t('list.showItems', { items: config.itemsLabel }) : t('list.hideItems', { items: config.itemsLabel })} aria-expanded={!hidden}>
               {hidden ? <MdVisibility /> : <MdVisibilityOff />}
             </IconButton>
           </HeaderActions>
@@ -497,22 +500,22 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
                   placeholder={config.searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  aria-label={`Search ${config.itemsLabel}`}
+                  aria-label={t('list.searchItems', { items: config.itemsLabel })}
                 />
                 {searchQuery && (
-                  <ClearSearchButton onClick={() => setSearchQuery('')} aria-label="Clear search">
+                  <ClearSearchButton onClick={() => setSearchQuery('')} aria-label={t('list.clearSearch')}>
                     <MdClear size={20} />
                   </ClearSearchButton>
                 )}
               </SearchInputWrapper>
-              <SortButton onClick={cycleSortOrder} active={sortOrder !== 'newest'} aria-label={`Sort by ${getSortLabel()}`}>
+              <SortButton onClick={cycleSortOrder} active={sortOrder !== 'newest'} aria-label={t('list.sortBy', { order: getSortLabel() })}>
                 <MdSort />
                 {getSortLabel()}
               </SortButton>
               {uniqueTags.length > 0 && (
-                <GroupByButton onClick={() => setGroupByTag(prev => !prev)} active={groupByTag} aria-label="Group by tag">
+                <GroupByButton onClick={() => setGroupByTag(prev => !prev)} active={groupByTag} aria-label={t('list.groupByTag')}>
                   <MdLabel />
-                  Group
+                  {t('list.group')}
                 </GroupByButton>
               )}
             </SearchContainer>
@@ -520,7 +523,7 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
             {uniqueTags.length > 0 && (
               <TagFilterRow>
                 <TagFilterChip active={activeTagFilter === null} onClick={() => setActiveTagFilter(null)}>
-                  All
+                  {t('list.filterAll')}
                 </TagFilterChip>
                 {uniqueTags.map(tag => (
                   <TagFilterChip key={tag} active={activeTagFilter === tag} onClick={() => setActiveTagFilter(activeTagFilter === tag ? null : tag)}>
@@ -528,7 +531,7 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
                   </TagFilterChip>
                 ))}
                 <TagFilterChip active={activeTagFilter === '__untagged__'} onClick={() => setActiveTagFilter(activeTagFilter === '__untagged__' ? null : '__untagged__')}>
-                  Untagged
+                  {t('list.untagged')}
                 </TagFilterChip>
               </TagFilterRow>
             )}
@@ -536,7 +539,10 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
             {(searchQuery || activeTagFilter) && (
               <SearchInfo>
                 <span>
-                  Showing <ResultCount>{filteredAndSorted.length}</ResultCount> of {items.length} {config.itemsLabel}
+                  <Interpolate
+                    text={t('list.showingCount', { total: items.length, items: config.itemsLabel })}
+                    values={{ shown: <ResultCount>{filteredAndSorted.length}</ResultCount> }}
+                  />
                 </span>
               </SearchInfo>
             )}
@@ -550,8 +556,8 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
         isOpen={deleteConfirm !== null}
         title={config.deleteTitle}
         message={deleteConfirm ? config.getDeleteMessage(deleteConfirm) : ''}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteConfirm(null)}
       />
@@ -560,8 +566,8 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
         isOpen={showClearConfirm}
         title={config.clearTitle}
         message={config.clearMessage}
-        confirmLabel="Clear all"
-        cancelLabel="Cancel"
+        confirmLabel={t('list.clearAll')}
+        cancelLabel={t('common.cancel')}
         onConfirm={handleClearConfirm}
         onCancel={() => setShowClearConfirm(false)}
       />

@@ -1,5 +1,6 @@
 import { MdArrowBack, MdOpenInNew, MdFavorite } from 'react-icons/md'
 import { FaGithub } from 'react-icons/fa'
+import { useI18n } from '../i18n'
 import { BackButton } from '../styles/SharedStyles'
 import { AboutContainer, AppInfo, AppLogo, AppName, AppVersion, LinksSection, LinkItem } from '../styles/pages.styles'
 
@@ -14,11 +15,13 @@ const STORE_URL = isFirefox
   : 'https://chromewebstore.google.com/detail/qwacky/kieehbhdbincplacegpjdkoglfakboeo'
 
 export const About = ({ onBack }: AboutProps) => {
+  const { t } = useI18n()
+
   return (
     <AboutContainer>
       <BackButton onClick={onBack}>
         <MdArrowBack size={20} />
-        Back
+        {t('common.back')}
       </BackButton>
 
       <AppInfo>
@@ -30,17 +33,17 @@ export const About = ({ onBack }: AboutProps) => {
       <LinksSection>
         <LinkItem href="https://github.com/Lanshuns/Qwacky#-support-the-project" target="_blank" rel="noopener noreferrer">
           <MdFavorite size={20} />
-          Support the project
+          {t('about.support')}
           <MdOpenInNew size={16} />
         </LinkItem>
         <LinkItem href="https://github.com/Lanshuns/Qwacky" target="_blank" rel="noopener noreferrer">
           <FaGithub size={20} />
-          GitHub repository
+          {t('about.github')}
           <MdOpenInNew size={16} />
         </LinkItem>
         <LinkItem href={STORE_URL} target="_blank" rel="noopener noreferrer">
           <MdOpenInNew size={20} />
-          {isFirefox ? 'Firefox add-ons' : 'Chrome web store'}
+          {isFirefox ? t('about.firefoxStore') : t('about.chromeStore')}
           <MdOpenInNew size={16} />
         </LinkItem>
       </LinksSection>

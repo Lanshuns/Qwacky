@@ -3,6 +3,7 @@ import { DuckService } from '../services/DuckService'
 import { MdArrowBack } from 'react-icons/md'
 import { useApp } from '../context/AppContext'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { Interpolate, useI18n } from '../i18n'
 import { BackButton, PrimaryButton } from '../styles/SharedStyles'
 import { LoginContainer, LoginMessage, DuckText, InputWrapper, LoginInput, Suffix, LoginErrorMessage, SignupSection, SignupLink } from '../styles/pages.styles'
 
@@ -19,6 +20,7 @@ export const Login = ({ onSubmit, isAddingAccount, onBack }: LoginProps) => {
   const [showSignupDialog, setShowSignupDialog] = useState(false)
   const duckService = useMemo(() => new DuckService(), [])
   const { accounts } = useApp()
+  const { t } = useI18n()
   const checkClosedRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -83,7 +85,7 @@ export const Login = ({ onSubmit, isAddingAccount, onBack }: LoginProps) => {
 
     if (accounts.some(acc => acc.username === cleanUsername)) {
       setLoading(false)
-      setError('This account is already logged in')
+      setError(t('login.alreadyLoggedIn'))
       return
     }
 
@@ -108,14 +110,16 @@ export const Login = ({ onSubmit, isAddingAccount, onBack }: LoginProps) => {
       {isAddingAccount && onBack && (
         <BackButton onClick={onBack}>
           <MdArrowBack size={20} />
-          Back to Dashboard
+          {t('common.backToDashboard')}
         </BackButton>
       )}
-      <LoginMessage>Login to manage your <DuckText>@duck.com</DuckText> addresses</LoginMessage>
+      <LoginMessage>
+        <Interpolate text={t('login.message')} values={{ duck: <DuckText>@duck.com</DuckText> }} />
+      </LoginMessage>
       <InputWrapper>
         <LoginInput
           type="text"
-          placeholder="Enter duck username"
+          placeholder={t('login.placeholder')}
           value={username}
           onChange={handleUsernameChange}
           onKeyUp={handleKeyPress}
@@ -127,21 +131,21 @@ export const Login = ({ onSubmit, isAddingAccount, onBack }: LoginProps) => {
         <Suffix>@duck.com</Suffix>
       </InputWrapper>
       <PrimaryButton onClick={handleSubmit} disabled={!username || loading}>
-        {loading ? 'Sending...' : 'Continue'}
+        {loading ? t('login.sending') : t('login.continue')}
       </PrimaryButton>
       {error && <LoginErrorMessage>{error}</LoginErrorMessage>}
 
       <SignupSection>
-        Don't have one? <SignupLink onClick={handleCreateAccount}>Create now</SignupLink>
+        {t('login.noAccount')} <SignupLink onClick={handleCreateAccount}>{t('login.createNow')}</SignupLink>
       </SignupSection>
 
       <ConfirmDialog
         isOpen={showSignupDialog}
         variant="info"
-        title="Create a duck address"
-        message="You'll be redirected to DuckDuckGo to create your @duck.com address. Once you complete the signup, you'll be automatically logged in."
-        confirmLabel="Continue to DuckDuckGo"
-        cancelLabel="Cancel"
+        title={t('login.signupTitle')}
+        message={t('login.signupMessage')}
+        confirmLabel={t('login.signupConfirm')}
+        cancelLabel={t('common.cancel')}
         onConfirm={handleSignupConfirm}
         onCancel={() => setShowSignupDialog(false)}
       />

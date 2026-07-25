@@ -5,6 +5,7 @@ import { DuckService } from "../services/DuckService";
 import { StorageService } from "../services/StorageService";
 import { ReverseAlias, TimeFormat } from "../types";
 import { useNotification } from "../components/Notification";
+import { RichText, useI18n } from "../i18n";
 
 import { ItemListSection, ListItem, ListConfig } from "../components/AddressListSection";
 import { DashboardTabs } from "../components/DashboardTabs";
@@ -36,34 +37,9 @@ interface StoredAddress {
   tags?: string[];
 }
 
-const GENERATE_LIST_CONFIG: ListConfig = {
-  title: "Generated addresses",
-  itemsLabel: "addresses",
-  emptyTitle: "No addresses yet",
-  emptySubtitle: "Click the button above to generate your first address",
-  searchPlaceholder: "Search addresses or notes...",
-  deleteTitle: "Delete address",
-  getDeleteMessage: (key) => `Are you sure you want to delete this address\n(${key}@duck.com)?`,
-  clearTitle: "Clear all addresses",
-  clearMessage: "Are you sure you want to clear all addresses?\n\nThis action cannot be undone.",
-  hideStorageKey: "hide_generated_addresses",
-};
-
-const SEND_LIST_CONFIG: ListConfig = {
-  title: "History",
-  itemsLabel: "aliases",
-  emptyTitle: "No history yet",
-  emptySubtitle: "Convert a recipient email above to get started",
-  searchPlaceholder: "Search emails or notes...",
-  deleteTitle: "Delete reverse alias",
-  getDeleteMessage: (key) => `Are you sure you want to delete the reverse alias for\n${key}?`,
-  clearTitle: "Clear all history",
-  clearMessage: "Are you sure you want to clear all reverse alias history?\n\nThis action cannot be undone.",
-  hideStorageKey: "hide_reverse_aliases",
-};
-
 export const Dashboard = () => {
   const { userData, currentAccount } = useApp();
+  const { t, localeTag } = useI18n();
   const [addresses, setAddresses] = useState<StoredAddress[]>([]);
   const [loading, setLoading] = useState(false);
   const [autoEditAddress, setAutoEditAddress] = useState<string | null>(null);
@@ -79,6 +55,32 @@ export const Dashboard = () => {
   const storageService = useMemo(() => new StorageService(), []);
   const [timeFormat, setTimeFormat] = useState<TimeFormat>('12h');
   const { showNotification, NotificationRenderer } = useNotification();
+
+  const generateListConfig: ListConfig = useMemo(() => ({
+    title: t("list.generated.title"),
+    itemsLabel: t("list.generated.itemsLabel"),
+    emptyTitle: t("list.generated.emptyTitle"),
+    emptySubtitle: t("list.generated.emptySubtitle"),
+    searchPlaceholder: t("list.generated.searchPlaceholder"),
+    deleteTitle: t("list.generated.deleteTitle"),
+    getDeleteMessage: (key) => t("list.generated.deleteMessage", { key }),
+    clearTitle: t("list.generated.clearTitle"),
+    clearMessage: t("list.generated.clearMessage"),
+    hideStorageKey: "hide_generated_addresses",
+  }), [t]);
+
+  const sendListConfig: ListConfig = useMemo(() => ({
+    title: t("list.send.title"),
+    itemsLabel: t("list.send.itemsLabel"),
+    emptyTitle: t("list.send.emptyTitle"),
+    emptySubtitle: t("list.send.emptySubtitle"),
+    searchPlaceholder: t("list.send.searchPlaceholder"),
+    deleteTitle: t("list.send.deleteTitle"),
+    getDeleteMessage: (key) => t("list.send.deleteMessage", { key }),
+    clearTitle: t("list.send.clearTitle"),
+    clearMessage: t("list.send.clearMessage"),
+    hideStorageKey: "hide_reverse_aliases",
+  }), [t]);
 
   useEffect(() => {
     chrome.storage.local.get('dashboardActiveTab', (result) => {
@@ -109,7 +111,7 @@ export const Dashboard = () => {
           setReverseAliases(loadedAliases);
         } catch (error) {
           console.error('Error loading data:', error);
-          showNotification("Failed to load data");
+          showNotification(t("dashboard.loadFailed"));
           setAddresses([]);
           setReverseAliases([]);
         }
@@ -125,22 +127,22 @@ export const Dashboard = () => {
   const copyToClipboard = useCallback(async (text: string, event?: MouseEvent) => {
     try {
       await navigator.clipboard.writeText(text);
-      showNotification("Copied!", event);
+      showNotification(t("common.copied"), event);
     } catch {
-      showNotification("Failed to copy", event);
+      showNotification(t("common.failedToCopy"), event);
     }
   }, [showNotification]);
 
   const formatTime = useCallback((timestamp: number) => {
     const date = new Date(timestamp);
-    return date.toLocaleString("en-US", {
+    return date.toLocaleString(localeTag, {
       hour: "numeric",
       minute: "numeric",
       hour12: timeFormat === '12h',
       month: "short",
       day: "numeric",
     });
-  }, [timeFormat]);
+  }, [timeFormat, localeTag]);
 
   const generateNewAddress = async () => {
     setLoading(true);
@@ -159,7 +161,7 @@ export const Dashboard = () => {
       }
     } catch (error) {
       console.error("Error generating address:", error);
-      showNotification("Failed to generate address");
+      showNotification(t("dashboard.generateFailed"));
     } finally {
       setLoading(false);
     }
@@ -239,7 +241,7 @@ export const Dashboard = () => {
 
     try { await navigator.clipboard.writeText(alias); } catch {}
     const nativeEvent = event && 'clientX' in event.nativeEvent ? event.nativeEvent as MouseEvent : undefined;
-    showNotification("Copied!", nativeEvent);
+    showNotification(t("common.copied"), nativeEvent);
     setRecipientEmail("");
     setAutoEditAlias(email);
   };
@@ -288,12 +290,12 @@ export const Dashboard = () => {
       key: addr.value,
       primaryText: addr.value + "@duck.com",
       copyText: addr.value + "@duck.com",
-      copyLabel: `Copy ${addr.value}@duck.com`,
+      copyLabel: t("list.copyItem", { value: addr.value + "@duck.com" }),
       timestamp: addr.timestamp,
       notes: addr.notes,
       tags: addr.tags || [],
     })),
-    [addresses]
+    [addresses, t]
   );
 
   const reverseAliasItems: ListItem[] = useMemo(() =>
@@ -302,12 +304,12 @@ export const Dashboard = () => {
       primaryText: a.recipientEmail,
       secondaryText: a.alias,
       copyText: a.alias,
-      copyLabel: `Copy reverse alias for ${a.recipientEmail}`,
+      copyLabel: t("list.copyReverseAlias", { value: a.recipientEmail }),
       timestamp: a.timestamp,
       notes: a.notes,
       tags: a.tags || [],
     })),
-    [reverseAliases]
+    [reverseAliases, t]
   );
 
   if (!userData) return null;
@@ -319,11 +321,11 @@ export const Dashboard = () => {
       {activeTab === 'generate' && (
         <>
           <GenerateButton onClick={generateNewAddress} disabled={loading}>
-            {loading ? "Generating..." : "Generate new address"}
+            {loading ? t("dashboard.generating") : t("dashboard.generate")}
           </GenerateButton>
           <ItemListSection
             items={addressItems}
-            config={GENERATE_LIST_CONFIG}
+            config={generateListConfig}
             copyToClipboard={copyToClipboard}
             formatTime={formatTime}
             onUpdateNotes={handleUpdateAddressNotes}
@@ -342,29 +344,29 @@ export const Dashboard = () => {
           <ReverseAliasSection>
             <InstructionsToggle onClick={() => setShowInstructions(prev => !prev)}>
               <MdInfo size={14} />
-              {showInstructions ? 'Hide' : 'How to use'}
+              {showInstructions ? t('dashboard.hideInstructions') : t('dashboard.howToUse')}
             </InstructionsToggle>
 
             {showInstructions && (
               <>
                 <ReverseAliasSteps>
-                  <li>Enter recipient's email & click <strong>Convert</strong></li>
-                  <li>Paste the result as <strong>To</strong> in your email client</li>
-                  <li>Send from the email linked to your DDG account</li>
+                  <li><RichText text={t('dashboard.step1')} /></li>
+                  <li><RichText text={t('dashboard.step2')} /></li>
+                  <li><RichText text={t('dashboard.step3')} /></li>
                 </ReverseAliasSteps>
                 <LearnMoreLink
                   href="https://duckduckgo.com/duckduckgo-help-pages/email-protection/duck-addresses/how-do-i-compose-a-new-email"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Learn more <MdOpenInNew size={12} />
+                  {t('dashboard.learnMore')} <MdOpenInNew size={12} />
                 </LearnMoreLink>
               </>
             )}
 
             {addresses.length > 0 && (
               <SenderSelector onClick={() => { setShowAliasPicker(true); setPickerSearch(''); }}>
-                <span>From:</span>
+                <span>{t('dashboard.from')}</span>
                 <span>{(effectiveSender || userData?.user.username) + '@duck.com'}</span>
                 <MdKeyboardArrowDown size={18} />
               </SenderSelector>
@@ -373,7 +375,7 @@ export const Dashboard = () => {
             <ReverseAliasInputRow>
               <ReverseAliasInput
                 type="email"
-                placeholder="someone@email.com"
+                placeholder={t('dashboard.recipientPlaceholder')}
                 value={recipientEmail}
                 onChange={(e) => setRecipientEmail(e.target.value)}
                 onKeyDown={(e) => {
@@ -384,7 +386,7 @@ export const Dashboard = () => {
                 onClick={handleConvertReverseAlias}
                 disabled={!recipientEmail.trim().includes("@")}
               >
-                Convert
+                {t('dashboard.convert')}
               </ReverseAliasConvertButton>
             </ReverseAliasInputRow>
           </ReverseAliasSection>
@@ -393,13 +395,13 @@ export const Dashboard = () => {
             <DialogOverlay onClick={(e) => { if (e.target === e.currentTarget) { setShowAliasPicker(false); setPickerSearch(''); } }}>
               <PickerContainer>
                 <PickerHeader>
-                  <h3>Send from</h3>
-                  <button aria-label="Close picker" onClick={() => { setShowAliasPicker(false); setPickerSearch(''); }}>
+                  <h3>{t('dashboard.sendFrom')}</h3>
+                  <button aria-label={t('dashboard.closePicker')} onClick={() => { setShowAliasPicker(false); setPickerSearch(''); }}>
                     <MdClose size={20} />
                   </button>
                 </PickerHeader>
                 <PickerSearchInput
-                  placeholder="Search addresses..."
+                  placeholder={t('dashboard.searchAddresses')}
                   value={pickerSearch}
                   onChange={(e) => setPickerSearch(e.target.value)}
                   autoFocus
@@ -413,7 +415,7 @@ export const Dashboard = () => {
                       {userData?.user.username}@duck.com
                       {!effectiveSender && <MdCheck size={14} style={{ marginLeft: 6, verticalAlign: 'middle' }} />}
                     </PickerItemText>
-                    <PickerItemLabel>Personal address</PickerItemLabel>
+                    <PickerItemLabel>{t('dashboard.personalAddress')}</PickerItemLabel>
                   </PickerItem>
                   {filteredPickerAddresses.map(addr => (
                     <PickerItem
@@ -434,7 +436,7 @@ export const Dashboard = () => {
           )}
           <ItemListSection
             items={reverseAliasItems}
-            config={SEND_LIST_CONFIG}
+            config={sendListConfig}
             copyToClipboard={copyToClipboard}
             formatTime={formatTime}
             onUpdateNotes={handleUpdateReverseAliasNotes}

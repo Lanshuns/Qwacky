@@ -1,5 +1,6 @@
 import React from 'react';
 import { MdAdd, MdSend } from 'react-icons/md';
+import { useI18n } from '../i18n';
 import { TabsContainer, Tab } from '../styles/DashboardTabs.styles';
 
 interface DashboardTabsProps {
@@ -8,6 +9,8 @@ interface DashboardTabsProps {
 }
 
 export const DashboardTabs: React.FC<DashboardTabsProps> = ({ activeTab, onTabChange }) => {
+  const { t } = useI18n();
+
   return (
     <TabsContainer role="tablist">
       <Tab
@@ -16,7 +19,7 @@ export const DashboardTabs: React.FC<DashboardTabsProps> = ({ activeTab, onTabCh
         aria-selected={activeTab === 'generate'}
         role="tab"
       >
-        <MdAdd /> Generate
+        <MdAdd /> {t('dashboard.tabGenerate')}
       </Tab>
       <Tab
         active={activeTab === 'send'}
@@ -24,7 +27,7 @@ export const DashboardTabs: React.FC<DashboardTabsProps> = ({ activeTab, onTabCh
         aria-selected={activeTab === 'send'}
         role="tab"
       >
-        <MdSend /> Send
+        <MdSend /> {t('dashboard.tabSend')}
       </Tab>
     </TabsContainer>
   );

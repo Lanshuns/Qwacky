@@ -3,6 +3,7 @@ import { DuckService } from '../services/DuckService'
 import { SyncService } from '../services/SyncService'
 import { UserData } from '../types'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { useI18n } from '../i18n'
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -32,6 +33,7 @@ const duckService = new DuckService()
 const syncService = new SyncService()
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }: { children: React.ReactNode }) => {
+  const { t } = useI18n()
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     try {
       const saved = localStorage.getItem('themeMode')
@@ -299,7 +301,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteCurrentAccount = async () => {
     if (!currentAccount) {
-      return { status: 'error' as const, message: 'No account is currently selected' }
+      return { status: 'error' as const, message: t('myAccount.noAccountSelected') }
     }
 
     const result = await duckService.deleteAccount(currentAccount)
@@ -341,10 +343,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       <ConfirmDialog
         isOpen={syncSessionPrompt !== null}
         variant="info"
-        title="Synced accounts found"
-        message={syncSessionPrompt ? `Found ${syncSessionPrompt.newAccounts.length} synced account(s): ${syncSessionPrompt.newAccounts.map(u => u + '@duck.com').join(', ')}. Would you like to restore them?` : ''}
-        confirmLabel="Restore"
-        cancelLabel="Cancel"
+        title={t('sync.foundTitle')}
+        message={syncSessionPrompt ? t('sync.foundMessage', {
+          count: syncSessionPrompt.newAccounts.length,
+          accounts: syncSessionPrompt.newAccounts.map(u => u + '@duck.com').join(', ')
+        }) : ''}
+        confirmLabel={t('sync.restore')}
+        cancelLabel={t('common.cancel')}
         onConfirm={handleRestoreSyncSession}
         onCancel={() => setSyncSessionPrompt(null)}
       />

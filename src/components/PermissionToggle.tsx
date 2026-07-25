@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { usePermissions, PERMISSIONS } from '../context/PermissionContext'
+import { useI18n } from '../i18n'
 import { ConfirmDialog } from './ConfirmDialog'
 import Markdown from 'react-markdown'
 import {
@@ -28,20 +29,18 @@ const isFirefox = navigator.userAgent.toLowerCase().includes('firefox')
 const CHROME_PERMISSION_NOTICE_SEEN = 'chromePermissionNoticeSeen'
 
 interface PermissionToggleProps {
-  name: string
-  description: string
+  permission: keyof typeof PERMISSIONS
   isEnabled: boolean
   onChange: (enabled: boolean) => void
   disabled?: boolean
 }
-
 export const PermissionToggle: React.FC<PermissionToggleProps> = ({
-  name,
-  description,
+  permission,
   isEnabled,
   onChange,
   disabled = false
 }) => {
+  const { t } = useI18n()
   const [status, setStatus] = useState<{ message: string; type: 'info' | 'error' | 'success' } | null>(null)
   const [showPermissionsNotice, setShowPermissionsNotice] = useState(false)
   const [showChromeNotice, setShowChromeNotice] = useState(false)
@@ -51,17 +50,15 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
   const tooltipTimeoutRef = useRef<number | null>(null);
   const reloadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const permissionType = Object.entries(PERMISSIONS).find(
-    ([_, permission]) => permission.name === name
-  )?.[0] as keyof typeof PERMISSIONS | undefined;
+  const definition = PERMISSIONS[permission];
+  const name = t(definition.nameKey);
+  const description = t(definition.descriptionKey);
+  const isRequired = definition.isRequired;
 
-  const isRequired = permissionType ? PERMISSIONS[permissionType]?.isRequired : false;
-
-  const browserSpecificInfo = permissionType && PERMISSIONS[permissionType]?.browserSpecificInfo
-    ? isFirefox
-      ? PERMISSIONS[permissionType].browserSpecificInfo?.firefox
-      : PERMISSIONS[permissionType].browserSpecificInfo?.chrome
-    : undefined;
+  const browserSpecificInfoKey = isFirefox
+    ? definition.browserSpecificInfoKey?.firefox
+    : definition.browserSpecificInfoKey?.chrome;
+  const browserSpecificInfo = browserSpecificInfoKey ? t(browserSpecificInfoKey) : undefined;
 
   const showTooltip = () => {
     if (tooltipTimeoutRef.current) {
@@ -146,7 +143,7 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
             }
             const granted = await requestPermissions('contextMenuFeatures')
             if (!granted) {
-              setStatus({ message: 'Permission request was denied', type: 'error' })
+              setStatus({ message: t('permissionToggle.denied'), type: 'error' })
               onChange(false)
               return
             }
@@ -157,7 +154,7 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
           enabled: true
         })
         if (response?.success) {
-          setStatus({ message: 'Reloading to apply changes...', type: 'success' })
+          setStatus({ message: t('permissionToggle.reloading'), type: 'success' })
           onChange(true)
 
           if (reloadTimeoutRef.current) clearTimeout(reloadTimeoutRef.current)
@@ -165,17 +162,17 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
             api.runtime.sendMessage({ action: 'reload-extension' })
           }, 1500)
         } else {
-          setStatus({ message: 'Failed to enable feature', type: 'error' })
+          setStatus({ message: t('permissionToggle.enableFailed'), type: 'error' })
           onChange(false)
         }
       } else {
-        setStatus({ message: `Disabling ${name}...`, type: 'info' })
+        setStatus({ message: t('permissionToggle.disabling', { name }), type: 'info' })
         const response = await api.runtime.sendMessage({
           action: 'toggleFeature',
           enabled: false
         })
         if (response?.success) {
-          setStatus({ message: 'Reloading to apply changes...', type: 'success' })
+          setStatus({ message: t('permissionToggle.reloading'), type: 'success' })
           await removePermissions('contextMenuFeatures')
           onChange(false)
 
@@ -184,48 +181,47 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
             api.runtime.sendMessage({ action: 'reload-extension' })
           }, 1500)
         } else {
-          setStatus({ message: 'Failed to disable feature', type: 'error' })
+          setStatus({ message: t('permissionToggle.disableFailed'), type: 'error' })
           onChange(true)
         }
       }
     } catch (error) {
       console.error('Toggle error:', error)
-      setStatus({ message: 'An error occurred', type: 'error' })
+      setStatus({ message: t('permissionToggle.error'), type: 'error' })
       onChange(!newState)
     }
-  }, [name, disabled, onChange, removePermissions, checkPermission, requestPermissions, chromeNoticeSeen, isRequired])
+  }, [name, disabled, onChange, removePermissions, checkPermission, requestPermissions, chromeNoticeSeen, isRequired, t])
 
   const FirefoxPermissionNotice = () => (
     <NoticeContainer>
-      <NoticeParagraph>To enable this feature:</NoticeParagraph>
-      <NoticeParagraph>1. Firefox will show a permissions request - click 'Allow'</NoticeParagraph>
-      <NoticeParagraph>2. Return to the extension and toggle the feature again</NoticeParagraph>
-      <NoticeParagraph>You can disable this feature anytime later.</NoticeParagraph>
+      <NoticeParagraph>{t('permissionToggle.firefox1')}</NoticeParagraph>
+      <NoticeParagraph>{t('permissionToggle.firefox2')}</NoticeParagraph>
+      <NoticeParagraph>{t('permissionToggle.firefox3')}</NoticeParagraph>
+      <NoticeParagraph>{t('permissionToggle.firefox4')}</NoticeParagraph>
     </NoticeContainer>
   );
 
   const ChromePermissionNotice = () => (
     <NoticeContainer>
-      <NoticeParagraph>Chrome handles permissions differently than Firefox.</NoticeParagraph>
-      <NoticeParagraph>To enable this feature, Chrome will show a permission request once. After clicking 'Done', a permissions dialog may appear.</NoticeParagraph>
-      <NoticeParagraph>If you see a permissions dialog, click 'Allow' then return to the extension and toggle the feature again.</NoticeParagraph>
-      <NoticeParagraph>For more details, see: <LinkText
+      <NoticeParagraph>{t('permissionToggle.chrome1')}</NoticeParagraph>
+      <NoticeParagraph>{t('permissionToggle.chrome2')}</NoticeParagraph>
+      <NoticeParagraph>{t('permissionToggle.chrome3')}</NoticeParagraph>
+      <NoticeParagraph>{t('permissionToggle.chrome4')}{' '}<LinkText
           href="https://github.com/Lanshuns/Qwacky?tab=readme-ov-file#browser-specific-permission-handling-and-limitations"
           target="_blank"
           rel="noopener noreferrer"
         >
-          Browser-Specific Permission Handling and Limitations
+          {t('permissionToggle.chromeLink')}
         </LinkText>
       </NoticeParagraph>
     </NoticeContainer>
   );
-
   return (
     <ToggleContainer disabled={disabled && !isRequired}>
       <ToggleHeader>
         <ToggleTitle>
           {name}
-          {!isFirefox && name === "Autofill" && (
+          {!isFirefox && permission === 'contextMenuFeatures' && (
             <InfoIconContainer
               onMouseEnter={showTooltip}
               onMouseLeave={hideTooltip}
@@ -240,13 +236,13 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
                 onMouseEnter={showTooltip}
                 onMouseLeave={hideTooltip}
               >
-                Browser additional permissions request will only appear once if not already granted.{' '}
+                {t('permissionToggle.tooltip')}{' '}
                 <LinkText
                   href="https://github.com/Lanshuns/Qwacky?tab=readme-ov-file#browser-specific-permission-handling-and-limitations"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Read More
+                  {t('permissionToggle.readMore')}
                 </LinkText>
               </Tooltip>
             </InfoIconContainer>
@@ -279,18 +275,18 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
       )}
       <ConfirmDialog
         isOpen={showPermissionsNotice}
-        title="Permissions notice"
+        title={t('permissionToggle.noticeTitle')}
         message={<FirefoxPermissionNotice />}
-        confirmLabel="Done"
+        confirmLabel={t('common.done')}
         onConfirm={handleNoticeDone}
         singleButton={true}
         variant="info"
       />
       <ConfirmDialog
         isOpen={showChromeNotice}
-        title="Permissions notice"
+        title={t('permissionToggle.noticeTitle')}
         message={<ChromePermissionNotice />}
-        confirmLabel="Done"
+        confirmLabel={t('common.done')}
         onConfirm={handleChromeNoticeDone}
         singleButton={true}
         variant="info"
