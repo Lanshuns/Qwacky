@@ -12,7 +12,47 @@ const setupConnection = () => {
   }
 }
 
-const showNotification = (message: string) => {
+// Only one notification is on screen at a time, so a result can replace the
+// pending spinner instead of stacking underneath it.
+let activeNotification: HTMLElement | null = null
+let dismissTimer: ReturnType<typeof setTimeout> | null = null
+
+const dismissNotification = () => {
+  if (dismissTimer) {
+    clearTimeout(dismissTimer)
+    dismissTimer = null
+  }
+  activeNotification?.remove()
+  activeNotification = null
+}
+
+const createSpinner = () => {
+  const spinner = document.createElement('span')
+  Object.assign(spinner.style, {
+    width: '14px',
+    height: '14px',
+    flex: '0 0 auto',
+    borderRadius: '50%',
+    boxSizing: 'border-box',
+    border: '2px solid rgba(255, 255, 255, 0.35)',
+    borderTopColor: '#fff'
+  })
+  // Animated here rather than with a stylesheet so nothing leaks into the page.
+  spinner.animate(
+    [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }],
+    { duration: 700, iterations: Infinity }
+  )
+  return spinner
+}
+
+// A pending notification waits for its result, but never hangs around forever
+// if the background page dies before sending one.
+const PENDING_TIMEOUT_MS = 20000
+const DISMISS_TIMEOUT_MS = 3000
+
+const showNotification = (message: string, pending = false) => {
+  dismissNotification()
+
   const notification = document.createElement('div')
   const styles = {
     position: 'fixed',
@@ -24,17 +64,30 @@ const showNotification = (message: string) => {
     padding: '16px 24px',
     borderRadius: '8px',
     zIndex: '999999',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)'
+    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px'
   }
   Object.assign(notification.style, styles)
   notification.setAttribute('role', 'status')
   notification.setAttribute('aria-live', 'polite')
-  notification.textContent = message === 'Not authenticated' ? 'You need to login first' : message
+
+  if (pending) {
+    notification.appendChild(createSpinner())
+  }
+
+  const label = document.createElement('span')
+  label.textContent = message === 'Not authenticated' ? 'You need to login first' : message
+  notification.appendChild(label)
+
   document.body.appendChild(notification)
-  
-  setTimeout(() => {
-    notification.remove()
-  }, 3000)
+  activeNotification = notification
+
+  dismissTimer = setTimeout(
+    dismissNotification,
+    pending ? PENDING_TIMEOUT_MS : DISMISS_TIMEOUT_MS
+  )
 }
 
 const fillInput = (element: HTMLElement | null, value: string) => {
@@ -139,6 +192,10 @@ if (!(window as unknown as { __qwackyContentScript?: boolean }).__qwackyContentS
           ? 'Converted and copied to clipboard'
           : 'Converted, but could not copy to clipboard. Please check permissions in settings.');
       }
+    }
+
+    if (message.type === 'show-pending') {
+      showNotification(message.message, true)
     }
 
     if (message.type === 'show-notification') {

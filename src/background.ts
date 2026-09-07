@@ -405,6 +405,24 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return false
 })
 
+const GENERATING_MESSAGE = 'Generating duck address...'
+
+/**
+ * Generating an address needs a network round trip that can take a few
+ * seconds. Put the content script and a spinner on the page before waiting on
+ * it, otherwise the shortcut looks like it did nothing at all.
+ */
+const showPending = async (tabId: number, message: string): Promise<void> => {
+  try {
+    await api.scripting.executeScript({
+      target: { tabId },
+      files: ['contentScript.js']
+    })
+    await api.tabs.sendMessage(tabId, { type: 'show-pending', message })
+  } catch {
+  }
+}
+
 const performConvert = async (tabId: number, selectionText: string) => {
   try {
     await api.scripting.executeScript({
@@ -467,7 +485,10 @@ if (api.contextMenus) {
           } catch {}
         }
 
-        const response = await duckService.generateAddress(domain || undefined)
+        const pending = duckService.generateAddress(domain || undefined)
+        await showPending(tab.id, GENERATING_MESSAGE)
+        const response = await pending
+
         if (response.status === 'error') {
           try {
             await api.tabs.sendMessage(tab.id, {
@@ -478,11 +499,6 @@ if (api.contextMenus) {
           }
           return
         }
-
-        await api.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['contentScript.js']
-        })
 
         try {
           await api.tabs.sendMessage(tab.id, {
@@ -542,7 +558,10 @@ if (api.commands) {
         } catch {}
       }
 
-      const response = await duckService.generateAddress(domain || undefined)
+      const pending = duckService.generateAddress(domain || undefined)
+      await showPending(activeTab.id, GENERATING_MESSAGE)
+      const response = await pending
+
       if (response.status === 'error') {
         try {
           await api.tabs.sendMessage(activeTab.id, {
@@ -553,11 +572,6 @@ if (api.commands) {
         }
         return
       }
-
-      await api.scripting.executeScript({
-        target: { tabId: activeTab.id },
-        files: ['contentScript.js']
-      })
 
       try {
         await api.tabs.sendMessage(activeTab.id, {
