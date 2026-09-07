@@ -50,7 +50,7 @@ export const theme = {
     shadowGlow: '0 0 20px rgba(255,159,25,0.3), 0 4px 12px rgba(255,159,25,0.2)',
     borderLight: '#F0F0F0',
     borderFocus: 'rgba(255,159,25,0.4)',
-    textOnPrimary: '#FFFFFF'
+    textOnPrimary: '#1C1C1C'
   },
   dark: {
     primary: '#ff9f19',
@@ -74,6 +74,6 @@ export const theme = {
     shadowGlow: '0 0 20px rgba(255,159,25,0.25), 0 4px 12px rgba(255,159,25,0.15)',
     borderLight: '#333333',
     borderFocus: 'rgba(255,159,25,0.5)',
-    textOnPrimary: '#FFFFFF'
+    textOnPrimary: '#1C1C1C'
   }
 }
