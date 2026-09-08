@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
-import { copyFileSync, mkdirSync, existsSync, readFileSync, writeFileSync } from 'fs'
+import { copyFileSync, mkdirSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'fs'
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 
@@ -27,6 +27,11 @@ const copyManifest = () => {
       })
 
       copyFileSync('assets/icons/qwacky.png', `${outDir}/assets/icons/qwacky.png`)
+
+      readdirSync('_locales').forEach(locale => {
+        mkdirSync(`${outDir}/_locales/${locale}`, { recursive: true })
+        copyFileSync(`_locales/${locale}/messages.json`, `${outDir}/_locales/${locale}/messages.json`)
+      })
 
       const polyfillPath = 'node_modules/webextension-polyfill/dist/browser-polyfill.js'
       if (existsSync(polyfillPath)) {

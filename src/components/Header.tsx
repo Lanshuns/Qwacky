@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { MdLogout, MdSettings, MdMenu, MdAccountCircle, MdPersonAdd, MdNewReleases, MdSwapHoriz, MdKeyboardArrowDown, MdEdit, MdCheck, MdClose, MdFavorite, MdInfoOutline, MdManageAccounts, MdOpenInNew } from 'react-icons/md'
 import { useApp } from '../context/AppContext'
 import { ConfirmDialog } from './ConfirmDialog'
+import { RichText, useI18n } from '../i18n'
 import {
   HeaderContainer,
   TitleSection,
@@ -36,6 +37,7 @@ interface HeaderProps {
 
 export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, onAboutClick, onMyAccountClick }: HeaderProps) => {
   const { userData, logout, accounts, currentAccount, switchAccount } = useApp()
+  const { t } = useI18n()
   const [menuDropdownOpen, setMenuDropdownOpen] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [accountsListOpen, setAccountsListOpen] = useState(false)
@@ -140,16 +142,16 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
           <Title>Qwacky</Title>
         </TitleSection>
         <IconsSection>
-          <IconButton onClick={openSupport}>
+          <IconButton onClick={openSupport} aria-label={t('header.support')} title={t('header.support')}>
             <MdFavorite size={24} />
           </IconButton>
           {!isPopout && (
-            <IconButton onClick={handlePopout}>
+            <IconButton onClick={handlePopout} aria-label={t('header.openInWindow')} title={t('header.openInWindow')}>
               <MdOpenInNew size={24} />
             </IconButton>
           )}
           <MenuDropdown ref={menuDropdownRef}>
-            <IconButton onClick={() => setMenuDropdownOpen(!menuDropdownOpen)}>
+            <IconButton onClick={() => setMenuDropdownOpen(!menuDropdownOpen)} aria-label={t('header.menu')}>
               <MdMenu size={24} />
             </IconButton>
             <DropdownContent isOpen={menuDropdownOpen}>
@@ -169,7 +171,7 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
                     <AccountsMenuWrapper isOpen={accountsListOpen}>
                       <DropdownItem onClick={() => setAccountsListOpen(!accountsListOpen)}>
                         <MdSwapHoriz size={20} />
-                        Switch account
+                        {t('header.switchAccount')}
                         <MdKeyboardArrowDown
                           size={20}
                           style={{
@@ -198,33 +200,33 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
                   {accountsListOpen && <DropdownDivider />}
                   <DropdownItem onClick={() => handleMenuItemClick(onAddAccountClick)}>
                     <MdPersonAdd size={20} />
-                    Add account
+                    {t('header.addAccount')}
                   </DropdownItem>
                   <DropdownItem onClick={() => handleMenuItemClick(onMyAccountClick)}>
                     <MdManageAccounts size={20} />
-                    My account
+                    {t('header.myAccount')}
                   </DropdownItem>
                   <DropdownDivider />
                 </>
               )}
               <DropdownItem onClick={() => handleMenuItemClick(onSettingsClick)}>
                 <MdSettings size={20} />
-                Settings
+                {t('header.settings')}
               </DropdownItem>
               <DropdownItem onClick={() => handleMenuItemClick(onChangelogClick)}>
                 <MdNewReleases size={20} />
-                What's new?
+                {t('header.whatsNew')}
               </DropdownItem>
               <DropdownItem onClick={() => handleMenuItemClick(onAboutClick)}>
                 <MdInfoOutline size={20} />
-                About
+                {t('header.about')}
               </DropdownItem>
               {userData && (
                 <>
                   <DropdownDivider />
                   <DropdownItem onClick={handleLogoutClick} logout>
                     <MdLogout size={20} />
-                    Log out
+                    {t('header.logout')}
                   </DropdownItem>
                 </>
               )}
@@ -235,10 +237,10 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
 
       <ConfirmDialog
         isOpen={showLogoutConfirm}
-        title="Confirm logout"
-        message="Are you sure you want to log out?"
-        confirmLabel="Log out"
-        cancelLabel="Cancel"
+        title={t('header.logoutConfirmTitle')}
+        message={t('header.logoutConfirmMessage')}
+        confirmLabel={t('header.logout')}
+        cancelLabel={t('common.cancel')}
         onConfirm={handleLogoutConfirm}
         onCancel={() => setShowLogoutConfirm(false)}
       />
@@ -246,13 +248,13 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
       {showNicknameDialog && (
         <NicknameEditDialog onClick={() => setShowNicknameDialog(false)}>
           <NicknameDialogContent onClick={(e) => e.stopPropagation()}>
-            <NicknameDialogTitle>Edit account nickname</NicknameDialogTitle>
+            <NicknameDialogTitle>{t('header.nicknameTitle')}</NicknameDialogTitle>
             <NicknameDialogSubtitle>
-              Set a custom nickname for <strong>{currentAccount}</strong>
+              <RichText text={t('header.nicknameSubtitle', { username: `<b>${currentAccount}</b>` })} />
             </NicknameDialogSubtitle>
             <NicknameInput
               type="text"
-              placeholder="Enter nickname (optional)"
+              placeholder={t('header.nicknamePlaceholder')}
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               onKeyDown={(e) => {
@@ -265,15 +267,15 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
               {currentAccount && accountNicknames[currentAccount] && (
                 <NicknameButton onClick={handleClearNickname}>
                   <MdClose size={18} />
-                  Clear
+                  {t('common.clear')}
                 </NicknameButton>
               )}
               <NicknameButton onClick={() => setShowNicknameDialog(false)}>
-                Cancel
+                {t('common.cancel')}
               </NicknameButton>
               <NicknameButton primary onClick={handleSaveNickname}>
                 <MdCheck size={18} />
-                Save
+                {t('common.save')}
               </NicknameButton>
             </NicknameDialogActions>
           </NicknameDialogContent>

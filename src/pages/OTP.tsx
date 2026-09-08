@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { DuckService } from '../services/DuckService'
 import { useApp } from '../context/AppContext'
 import { MdArrowBack, MdKeyboardArrowDown } from 'react-icons/md'
+import { useI18n } from '../i18n'
 import { BackButton } from '../styles/SharedStyles'
 import {
   OTPContainer, OTPUsername, OTPMessage, OTPInput, OTPButton,
@@ -25,6 +26,7 @@ export const OTP = ({ username, onBack, isAddingAccount, onSuccess }: OTPProps) 
   const [resendSuccess, setResendSuccess] = useState('')
   const [showHint, setShowHint] = useState(false)
   const { setUserData, switchAccount } = useApp()
+  const { t } = useI18n()
   const duckService = useMemo(() => new DuckService(), [])
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const resendTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -67,12 +69,12 @@ export const OTP = ({ username, onBack, isAddingAccount, onSuccess }: OTPProps) 
 
     setResendLoading(false)
     if (response.status === 'success') {
-      setResendSuccess('A new passphrase has been sent to your email.')
+      setResendSuccess(t('otp.resendSuccess'))
       startCooldown()
       if (resendTimeoutRef.current) clearTimeout(resendTimeoutRef.current)
       resendTimeoutRef.current = setTimeout(() => setResendSuccess(''), 5000)
     } else {
-      setError(response.message || 'Failed to resend passphrase.')
+      setError(response.message || t('otp.resendFailed'))
     }
   }
 
@@ -97,11 +99,11 @@ export const OTP = ({ username, onBack, isAddingAccount, onSuccess }: OTPProps) 
               await chrome.storage.local.remove(['otp_verification_in_progress']);
             } catch (error) {
               console.error('Error switching account:', error);
-              setError('Failed to switch to new account');
+              setError(t('otp.switchFailed'));
               await chrome.storage.local.remove(['otp_verification_in_progress']);
             }
           } else {
-            setError('Failed to get user data');
+            setError(t('otp.userDataFailed'));
             await chrome.storage.local.remove(['otp_verification_in_progress']);
           }
         } else if (response.dashboard) {
@@ -112,11 +114,11 @@ export const OTP = ({ username, onBack, isAddingAccount, onSuccess }: OTPProps) 
           }
         }
       } else {
-        setError(response.message || 'Failed to verify OTP');
+        setError(response.message || t('otp.verifyFailed'));
         await chrome.storage.local.remove(['otp_verification_in_progress']);
       }
     } catch (error) {
-      setError('An error occurred. Please try again.');
+      setError(t('otp.genericError'));
       await chrome.storage.local.remove(['otp_verification_in_progress']);
     } finally {
       setLoading(false);
@@ -152,14 +154,14 @@ export const OTP = ({ username, onBack, isAddingAccount, onSuccess }: OTPProps) 
     <OTPContainer>
       <BackButton onClick={onBack}>
         <MdArrowBack size={20} />
-        {isAddingAccount ? 'Back to login' : 'Back'}
+        {isAddingAccount ? t('otp.backToLogin') : t('common.back')}
       </BackButton>
 
-      <OTPUsername>Logged in as {username}@duck.com</OTPUsername>
-      <OTPMessage>One-time passphrase sent to your email</OTPMessage>
+      <OTPUsername>{t('otp.loggedInAs', { username })}</OTPUsername>
+      <OTPMessage>{t('otp.message')}</OTPMessage>
       <OTPInput
         type="text"
-        placeholder="e.g. morality landless proved paprika"
+        placeholder={t('otp.placeholder')}
         value={otp}
         onChange={(e) => setOtp(e.target.value.toLowerCase())}
         onKeyUp={handleKeyPress}
@@ -173,12 +175,12 @@ export const OTP = ({ username, onBack, isAddingAccount, onSuccess }: OTPProps) 
         onClick={handleVerify}
         disabled={otp.split(' ').filter(Boolean).length !== 4 || loading}
       >
-        {loading ? 'Verifying...' : 'Verify OTP'}
+        {loading ? t('otp.verifying') : t('otp.verify')}
       </OTPButton>
 
       <OTPResendRow>
         <OTPResendButton onClick={handleResend} disabled={cooldown > 0 || resendLoading}>
-          {resendLoading ? 'Sending...' : 'Resend passphrase'}
+          {resendLoading ? t('login.sending') : t('otp.resend')}
         </OTPResendButton>
         {cooldown > 0 && <OTPCooldownText>({cooldown}s)</OTPCooldownText>}
       </OTPResendRow>
@@ -188,13 +190,10 @@ export const OTP = ({ username, onBack, isAddingAccount, onSuccess }: OTPProps) 
 
       <OTPHintToggle onClick={() => setShowHint(prev => !prev)}>
         <MdKeyboardArrowDown size={14} style={{ transform: showHint ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-        Having trouble logging in?
+        {t('otp.troubleToggle')}
       </OTPHintToggle>
       {showHint && (
-        <OTPHint>
-          Didn't receive it? Check your spam or junk folder. Some email providers
-          (like ProtonMail) may delay or filter messages from DuckDuckGo.
-        </OTPHint>
+        <OTPHint>{t('otp.hint')}</OTPHint>
       )}
     </OTPContainer>
   )

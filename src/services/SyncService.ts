@@ -1,5 +1,6 @@
 import { errorMessage } from '../utils/safeOps';
 import { UserData, TimeFormat } from '../types';
+import { t } from '../i18n/core';
 
 interface Address {
   value: string;
@@ -278,7 +279,7 @@ export class SyncService {
       return await this.migrateToSync();
     }
 
-    return { success: true, message: 'Sync disabled' };
+    return { success: true, message: t('sync.disabled') };
   }
 
   private async migrateDataToSync(localData: any[], syncKey: string, mergeFn: (local: any[], sync: any[]) => Promise<any[]>, validateFn: (data: any[]) => any[]): Promise<{ count: number; error?: string }> {
@@ -308,7 +309,7 @@ export class SyncService {
 
     const dataSize = new Blob([finalData]).size;
     if (dataSize > 8000) {
-      return { count: 0, error: `Data too large (${Math.round(dataSize / 1024)}KB). Maximum is 8KB per account.` };
+      return { count: 0, error: t('sync.dataTooLarge', { size: Math.round(dataSize / 1024) }) };
     }
 
     await chrome.storage.sync.set({
@@ -324,7 +325,7 @@ export class SyncService {
     try {
       const username = await this.getCurrentUsername();
       if (!username) {
-        return { success: false, message: 'No user logged in' };
+        return { success: false, message: t('sync.noUser') };
       }
 
       const options = await this.getSyncOptions();
@@ -342,7 +343,7 @@ export class SyncService {
             (d: any[]) => this.validateAddresses(d)
           );
           if (result.error) return { success: false, message: result.error };
-          parts.push(`${result.count} addresses`);
+          parts.push(t('sync.addressCount', { count: result.count }));
         }
 
         const localData = await chrome.storage.local.get('user_data');
@@ -363,23 +364,23 @@ export class SyncService {
             (d: any[]) => this.validateReverseAliases(d)
           );
           if (result.error) return { success: false, message: result.error };
-          parts.push(`${result.count} reverse aliases`);
+          parts.push(t('sync.aliasCount', { count: result.count }));
         }
       }
 
       if (options.session) {
         await this.saveSessionToSync();
-        parts.push('session data');
+        parts.push(t('sync.sessionData'));
       }
 
       if (parts.length === 0) {
         await chrome.storage.sync.set({ [SyncService.SYNC_LAST_SYNC_KEY]: Date.now() });
-        return { success: true, message: 'No data to migrate' };
+        return { success: true, message: t('sync.nothingToMigrate') };
       }
 
       return {
         success: true,
-        message: `Successfully synced ${parts.join(', ')}`,
+        message: t('sync.syncedParts', { parts: parts.join(', ') }),
       };
     } catch (error: unknown) {
       console.error('Migration error:', error);
@@ -387,13 +388,13 @@ export class SyncService {
       if (errorMessage(error).includes('QUOTA_BYTES')) {
         return {
           success: false,
-          message: 'Storage quota exceeded. Try reducing the amount of synced data.',
+          message: t('sync.quotaExceeded'),
         };
       }
 
       return {
         success: false,
-        message: errorMessage(error) || 'Migration failed',
+        message: errorMessage(error) || t('sync.migrationFailed'),
       };
     }
   }
@@ -483,7 +484,7 @@ export class SyncService {
       if (errorMessage(error).includes('QUOTA_BYTES')) {
         await this.setSyncEnabled(false);
         chrome.runtime.sendMessage({ action: 'syncAutoDisabled', reason: 'quota_exceeded' }).catch(() => {});
-        throw new Error('Sync quota exceeded. Sync has been disabled.');
+        throw new Error(t('sync.quotaExceededDisabled'));
       }
 
       throw error;
@@ -926,13 +927,13 @@ export class SyncService {
   async pullFromSync(): Promise<{ success: boolean; message: string }> {
     const options = await this.getSyncOptions();
     if (!options.enabled) {
-      return { success: false, message: 'Sync is not enabled' };
+      return { success: false, message: t('sync.notEnabled') };
     }
 
     try {
       const username = await this.getCurrentUsername();
       if (!username) {
-        return { success: false, message: 'No user logged in' };
+        return { success: false, message: t('sync.noUser') };
       }
 
       const parts: string[] = [];
@@ -982,7 +983,7 @@ export class SyncService {
             if (!msg.includes('Receiving end does not exist')) console.error('Message send failed:', msg);
           });
 
-          parts.push(`${mergedAddresses.length} addresses`);
+          parts.push(t('sync.addressCount', { count: mergedAddresses.length }));
         }
       }
 
@@ -1011,7 +1012,7 @@ export class SyncService {
             if (!msg.includes('Receiving end does not exist')) console.error('Message send failed:', msg);
           });
 
-          parts.push(`${mergedAliases.length} reverse aliases`);
+          parts.push(t('sync.aliasCount', { count: mergedAliases.length }));
         }
       }
 
@@ -1030,19 +1031,19 @@ export class SyncService {
               sessionData,
             }).catch(() => {});
           }
-          parts.push('session data');
+          parts.push(t('sync.sessionData'));
         }
       }
 
       return {
         success: true,
-        message: parts.length > 0 ? `Successfully synced ${parts.join(', ')}` : 'No synced data found',
+        message: parts.length > 0 ? t('sync.syncedParts', { parts: parts.join(', ') }) : t('sync.noSyncedData'),
       };
     } catch (error: unknown) {
       console.error('Pull from sync error:', error);
       return {
         success: false,
-        message: errorMessage(error) || 'Failed to pull from sync',
+        message: errorMessage(error) || t('sync.pullFailed'),
       };
     }
   }

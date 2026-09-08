@@ -1,5 +1,6 @@
 import { StorageService } from './StorageService';
 import { QwackyBackup, BackupSummary } from '../types';
+import { t } from '../i18n/core';
 
 interface Address {
   value: string;
@@ -44,18 +45,18 @@ export class ImportExportService {
 
   async importAddresses(data: string): Promise<ImportAddressesResult> {
     if (!data || typeof data !== 'string' || data.trim() === '') {
-      return { success: false, count: 0, duplicates: 0, invalid: 0, error: 'Import data is empty or invalid' };
+      return { success: false, count: 0, duplicates: 0, invalid: 0, error: t('error.importDataEmpty') };
     }
 
     let records: Array<{ value?: string; timestamp?: number; notes?: string; tags?: string[] }>;
     try {
       const importData = JSON.parse(data);
       if (!importData.addresses || !Array.isArray(importData.addresses)) {
-        return { success: false, count: 0, duplicates: 0, invalid: 0, error: 'Invalid format: missing addresses array' };
+        return { success: false, count: 0, duplicates: 0, invalid: 0, error: t('error.importMissingAddresses') };
       }
       records = importData.addresses;
     } catch {
-      return { success: false, count: 0, duplicates: 0, invalid: 0, error: 'Invalid JSON format' };
+      return { success: false, count: 0, duplicates: 0, invalid: 0, error: t('error.importInvalidJson') };
     }
 
     return this.importAddressRecords(records);
@@ -63,7 +64,7 @@ export class ImportExportService {
 
   async importAddressList(text: string): Promise<ImportAddressesResult> {
     if (!text || typeof text !== 'string' || text.trim() === '') {
-      return { success: false, count: 0, duplicates: 0, invalid: 0, error: 'Import data is empty or invalid' };
+      return { success: false, count: 0, duplicates: 0, invalid: 0, error: t('error.importDataEmpty') };
     }
 
     const records = text
@@ -73,7 +74,7 @@ export class ImportExportService {
       .map(value => ({ value }));
 
     if (records.length === 0) {
-      return { success: false, count: 0, duplicates: 0, invalid: 0, error: 'No addresses found in file' };
+      return { success: false, count: 0, duplicates: 0, invalid: 0, error: t('error.importNoAddresses') };
     }
 
     return this.importAddressRecords(records);
@@ -110,7 +111,7 @@ export class ImportExportService {
 
       const userData = await this.storage.getUserData();
       if (!userData || !userData.user || !userData.user.username) {
-        return { success: false, count: 0, duplicates: inFileDuplicates, invalid, error: 'User data not found. Please log in again.' };
+        return { success: false, count: 0, duplicates: inFileDuplicates, invalid, error: t('error.userDataNotFoundLogin') };
       }
       const username = userData.user.username;
 
@@ -132,8 +133,8 @@ export class ImportExportService {
             duplicates,
             invalid,
             error: invalid > 0 && duplicates === 0
-              ? 'No valid duck.com addresses found.'
-              : 'No new addresses to import. All addresses already exist.'
+              ? t('error.importNoValidAddresses')
+              : t('error.importAllExist')
           };
         }
 
@@ -165,7 +166,7 @@ export class ImportExportService {
           count: 0,
           duplicates: inFileDuplicates,
           invalid,
-          error: `Storage error: ${storageError instanceof Error ? storageError.message : 'Failed to save imported addresses'}`
+          error: t('error.importStorage', { reason: storageError instanceof Error ? storageError.message : t('error.importSaveFailed') })
         };
       }
     } catch (error) {
@@ -175,7 +176,7 @@ export class ImportExportService {
         count: 0,
         duplicates: 0,
         invalid: 0,
-        error: `Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        error: t('settings.importFailedWithReason', { reason: error instanceof Error ? error.message : t('common.unknownError') })
       };
     }
   }
@@ -276,29 +277,29 @@ export class ImportExportService {
       return { data: JSON.stringify(exportData, null, 2), summary };
     } catch (error) {
       console.error('Error exporting backup:', error);
-      throw new Error('Failed to export backup');
+      throw new Error(t('error.exportBackupFailed'));
     }
   }
 
   async importBackup(data: string): Promise<{ success: boolean; hasSession: boolean; summary?: BackupSummary; error?: string }> {
     try {
       if (!data || typeof data !== 'string' || data.trim() === '') {
-        return { success: false, hasSession: false, error: 'Import data is empty or invalid' };
+        return { success: false, hasSession: false, error: t('error.importDataEmpty') };
       }
 
       let backupData: QwackyBackup;
       try {
         backupData = JSON.parse(data);
       } catch {
-        return { success: false, hasSession: false, error: 'Invalid JSON format' };
+        return { success: false, hasSession: false, error: t('error.importInvalidJson') };
       }
 
       if (!backupData || typeof backupData !== 'object' || !backupData.version || !backupData.timestamp) {
-        return { success: false, hasSession: false, error: 'Invalid backup file format' };
+        return { success: false, hasSession: false, error: t('error.invalidBackupFormat') };
       }
 
       if (backupData.type !== 'qwacky_backup') {
-        return { success: false, hasSession: false, error: 'Not a valid Qwacky backup file' };
+        return { success: false, hasSession: false, error: t('error.notQwackyBackup') };
       }
 
       if (backupData.session) {
@@ -379,7 +380,7 @@ export class ImportExportService {
         } else {
           const currentAcct = session.accounts.find(a => a.username === session.currentAccount);
           if (!currentAcct) {
-            return { success: false, hasSession: false, error: 'Current account not found in session data' };
+            return { success: false, hasSession: false, error: t('error.accountNotInSession') };
           }
           await chrome.storage.local.set({
             user_data: currentAcct.userData,
@@ -419,7 +420,7 @@ export class ImportExportService {
 
       const userData = await this.storage.getUserData();
       if (!userData || !userData.user || !userData.user.username) {
-        return { success: false, hasSession: false, error: 'User data not found. Please log in first.' };
+        return { success: false, hasSession: false, error: t('error.userDataNotFoundLoginFirst') };
       }
       const username = userData.user.username;
 
@@ -498,7 +499,7 @@ export class ImportExportService {
       return {
         success: false,
         hasSession: false,
-        error: `Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        error: t('settings.importFailedWithReason', { reason: error instanceof Error ? error.message : t('common.unknownError') })
       };
     }
   }

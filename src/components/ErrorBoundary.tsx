@@ -1,5 +1,6 @@
 import React from 'react'
 import styled from 'styled-components'
+import { t } from '../i18n/core'
 
 const ErrorContainer = styled.div`
   display: flex;
@@ -50,10 +51,10 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
     if (this.state.hasError) {
       return (
         <ErrorContainer>
-          <ErrorTitle>Something went wrong</ErrorTitle>
-          <ErrorMessage>The extension encountered an unexpected error.</ErrorMessage>
+          <ErrorTitle>{t('errorBoundary.title')}</ErrorTitle>
+          <ErrorMessage>{t('errorBoundary.message')}</ErrorMessage>
           <ReloadButton onClick={() => window.location.reload()}>
-            Reload Extension
+            {t('errorBoundary.reload')}
           </ReloadButton>
         </ErrorContainer>
       )

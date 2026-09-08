@@ -9,6 +9,7 @@ import { About } from './pages/About'
 import { MyAccount } from './pages/MyAccount'
 import { Header } from './components/Header'
 import { ConfirmDialog } from './components/ConfirmDialog'
+import { useI18n } from './i18n'
 import { theme } from './theme'
 import { useState, useEffect } from 'react'
 
@@ -81,6 +82,7 @@ const Container = styled.div`
 
 export const App = () => {
   const { darkMode, userData } = useApp()
+  const { t } = useI18n()
   const [currentPage, setCurrentPage] = useState('login')
   const [tempUsername, setTempUsername] = useState('')
   const [showSettings, setShowSettings] = useState(false)
@@ -320,18 +322,18 @@ export const App = () => {
         <ConfirmDialog
           isOpen={autoLoginAccount !== null}
           variant="info"
-          title="Logged in successfully"
-          message={`Automatically logged in as ${autoLoginAccount}@duck.com`}
-          confirmLabel="Got it"
+          title={t('autoLogin.successTitle')}
+          message={t('autoLogin.successMessage', { username: autoLoginAccount ?? '' })}
+          confirmLabel={t('common.gotIt')}
           singleButton
           onConfirm={() => setAutoLoginAccount(null)}
         />
         <ConfirmDialog
           isOpen={autoLoginError !== null}
           variant="warning"
-          title="Auto-login failed"
+          title={t('autoLogin.failedTitle')}
           message={autoLoginError || ''}
-          confirmLabel="OK"
+          confirmLabel={t('common.ok')}
           singleButton
           onConfirm={() => setAutoLoginError(null)}
         />

@@ -1,3 +1,5 @@
+import { t } from '../i18n/core'
+
 export class AuthService {
   private headers: Record<string, string>
 
@@ -16,17 +18,17 @@ export class AuthService {
         { headers: this.headers }
       )
       if (response.ok) {
-        return { status: 'success', needs_otp: true, message: 'OTP sent to your email!' }
+        return { status: 'success', needs_otp: true, message: t('error.otpSent') }
       }
       if (response.status === 429) {
-        return { status: 'error', message: 'Too many requests. Please wait a moment before trying again.' }
+        return { status: 'error', message: t('error.tooManyRequests') }
       }
-      return { status: 'error', message: 'Failed to send OTP. Please try again later.' }
+      return { status: 'error', message: t('error.otpSendFailed') }
     } catch (error) {
       if (error instanceof TypeError && error.message === 'Failed to fetch') {
-        return { status: 'error', message: 'Network error. Please check your internet connection.' }
+        return { status: 'error', message: t('error.network') }
       }
-      return { status: 'error', message: error instanceof Error ? error.message : 'Unknown error' }
+      return { status: 'error', message: error instanceof Error ? error.message : t('common.unknownError') }
     }
   }
 
@@ -40,17 +42,17 @@ export class AuthService {
         { headers: this.headers }
       )
       if (loginResponse.status === 429) {
-        return { status: 'error', message: 'Too many requests. Please wait a moment before trying again.' }
+        return { status: 'error', message: t('error.tooManyRequests') }
       }
       if (!loginResponse.ok) {
-        return { status: 'error', message: 'Login failed. Please try again.' }
+        return { status: 'error', message: t('error.loginFailed') }
       }
 
       let loginData;
       try {
         loginData = await loginResponse.json();
       } catch {
-        return { status: 'error', message: 'Invalid response from server.' };
+        return { status: 'error', message: t('error.invalidServerResponse') };
       }
 
       if ('token' in loginData) {
@@ -61,30 +63,30 @@ export class AuthService {
         )
 
         if (!dashboardResponse.ok) {
-          return { status: 'error', message: 'Failed to load dashboard data.' }
+          return { status: 'error', message: t('error.dashboardFailed') }
         }
 
         let dashboardData;
         try {
           dashboardData = await dashboardResponse.json();
         } catch {
-          return { status: 'error', message: 'Invalid response from server.' };
+          return { status: 'error', message: t('error.invalidServerResponse') };
         }
 
         return {
           status: 'success',
           dashboard: dashboardData,
           access_token: loginData.token,
-          message: 'Login successful!'
+          message: t('error.loginSuccessful')
         }
       }
       
-      return { status: 'error', message: 'Invalid passphrase. Please check the passphrase in your email and try again.' }
+      return { status: 'error', message: t('error.invalidPassphrase') }
     } catch (error) {
       if (error instanceof TypeError && error.message === 'Failed to fetch') {
-        return { status: 'error', message: 'Network error. Please check your internet connection.' }
+        return { status: 'error', message: t('error.network') }
       }
-      return { status: 'error', message: error instanceof Error ? error.message : 'Unknown error' }
+      return { status: 'error', message: error instanceof Error ? error.message : t('common.unknownError') }
     }
   }
 
@@ -105,14 +107,14 @@ export class AuthService {
       )
       
       if (!response.ok) {
-        throw new Error('Failed to generate address')
+        throw new Error(t('error.generateFailed'))
       }
       
       let data;
       try {
         data = await response.json();
       } catch {
-        return { status: 'error', message: 'Invalid response from server.' };
+        return { status: 'error', message: t('error.invalidServerResponse') };
       }
       if (data.address) {
         return { 
@@ -120,11 +122,11 @@ export class AuthService {
           address: data.address 
         }
       }
-      throw new Error('Invalid response format')
+      throw new Error(t('error.invalidResponseFormat'))
     } catch (error) {
       return { 
         status: 'error', 
-        message: error instanceof Error ? error.message : 'Unknown error' 
+        message: error instanceof Error ? error.message : t('common.unknownError') 
       }
     }
   }

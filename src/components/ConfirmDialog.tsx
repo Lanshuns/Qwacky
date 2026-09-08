@@ -1,5 +1,6 @@
 import { MdWarning, MdInfo } from 'react-icons/md';
 import { ReactNode } from 'react';
+import { useI18n } from '../i18n';
 import {
   DialogOverlay,
   Dialog,
@@ -25,17 +26,21 @@ interface ConfirmDialogProps {
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   title,
   message,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
+  confirmLabel,
+  cancelLabel,
   onConfirm,
   onCancel,
   isOpen,
   singleButton = false,
   variant = 'warning'
 }) => {
+  const { t } = useI18n();
+
   if (!isOpen) return null;
 
   const Icon = variant === 'info' ? MdInfo : MdWarning;
+  const confirmText = confirmLabel ?? t('common.confirm');
+  const cancelText = cancelLabel ?? t('common.cancel');
 
   return (
     <DialogOverlay onClick={(e) => {
@@ -55,14 +60,14 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               onClick={onCancel}
               variant="primary"
             >
-              {cancelLabel}
+              {cancelText}
             </DialogButton>
           )}
           <DialogButton
             onClick={onConfirm}
             singleButton={singleButton}
           >
-            {confirmLabel}
+            {confirmText}
           </DialogButton>
         </DialogButtonContainer>
       </Dialog>

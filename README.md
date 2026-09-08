@@ -42,6 +42,7 @@ Qwacky solves this by providing a lightweight, standalone alternative focused en
 - **Stay organized:** notes, tags, search and filtering across all your addresses
 - **Multiple accounts:** manage and switch between duck accounts in one place
 - **Your data, portable:** cross-device sync, plus backup and restore
+- **English and Spanish:** switch languages from Settings, no reinstall needed
 - **And more!**
 
 ## Browser Compatibility
@@ -138,11 +139,35 @@ npm run build:firefox
 
 The built extension will be available in `dist_chrome/` or `dist_firefox/` respectively.
 
-> **Note**: For development and temporary installation in Firefox, you can use `about:debugging` method:
-> 1. Go to `about:debugging`
-> 2. Click "This Firefox" in the left sidebar
-> 3. Click "Load Temporary Add-on"
-> 4. Select the `manifest.json` file from the `dist_firefox/` folder
+## Translations
+
+Qwacky ships with English and Spanish. The language is picked from the
+browser on first run and can be changed under **Settings > Appearance >
+Language**. The choice is saved and applies everywhere, including the
+right-click menu and the on-page notifications.
+
+Everything lives in `src/i18n/`:
+
+```
+src/i18n/
+core.ts             t(), language detection and persistence (no React)
+index.tsx           I18nProvider, useI18n(), <Interpolate>, <RichText>
+locales/en.ts       source of truth, its keys define TranslationKey
+locales/es.ts       typed as Translations, so a missing key fails the build
+```
+
+To add a language:
+
+1. Copy `locales/en.ts` and translate the values. It is typed, so `tsc` will
+   flag anything you miss.
+2. Register it in `core.ts` (`Language`, `LANGUAGES`, `bundles`).
+3. Set `locale.tag` to the BCP 47 tag used for date and number formatting.
+4. Add a `language.<code>` label and a `_locales/<code>/messages.json` for the
+   store listing and the keyboard shortcut descriptions.
+
+Use `t('some.key')` for text, and pass a `count` where a string has `_one` and
+`_other` forms. In JSX, `<Interpolate>` fills a `{placeholder}` with a React
+node and `<RichText>` renders `<b>` markers.
 
 # 💖 Support the Project
 

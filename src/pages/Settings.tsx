@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { MdFileUpload, MdArrowBack, MdDescription, MdSecurity, MdDownload, MdSync, MdRefresh, MdKeyboardArrowDown, MdPalette, MdLightMode, MdDarkMode, MdDevices } from "react-icons/md";
+import { MdFileUpload, MdArrowBack, MdDescription, MdSecurity, MdDownload, MdSync, MdRefresh, MdKeyboardArrowDown, MdPalette, MdLightMode, MdDarkMode, MdDevices, MdTranslate } from "react-icons/md";
 import { DuckService } from "../services/DuckService";
 import { StorageService } from "../services/StorageService";
 import { SyncService, SyncOptions } from "../services/SyncService";
 import { ImportAddressesResult } from "../services/ImportExportService";
 import { usePermissions, PERMISSIONS, ALL_PERMISSIONS } from "../context/PermissionContext";
 import { useApp, ThemeMode } from "../context/AppContext";
+import { Language, TranslateParams, TranslationKey, useI18n } from "../i18n";
 import { BackupSummary, TimeFormat } from "../types";
 import { PermissionToggle } from "../components/PermissionToggle";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -44,32 +45,39 @@ const api = typeof browser !== 'undefined' ? browser : chrome;
 const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
 const isFirefoxPopup = isFirefox && !window.location.search.includes('popout=1');
 
-const describeAddressImport = (result: ImportAddressesResult): string => {
+type Translate = (key: TranslationKey, params?: TranslateParams) => string;
+
+const describeAddressImport = (result: ImportAddressesResult, t: Translate): string => {
   if (!result.success) {
-    return `Import failed: ${result.error || 'Unknown error'}`;
+    return t('settings.importFailedWithReason', { reason: result.error || t('common.unknownError') });
   }
 
   const notes: string[] = [];
   if (result.duplicates > 0) {
-    notes.push(`${result.duplicates} duplicate${result.duplicates === 1 ? '' : 's'} skipped`);
+    notes.push(t('settings.importDuplicates', { count: result.duplicates }));
   }
-  if (result.invalid > 0) notes.push(`${result.invalid} ignored (not a duck.com address)`);
+  if (result.invalid > 0) notes.push(t('settings.importInvalid', { count: result.invalid }));
 
   if (result.count === 0) {
-    return result.error || 'No new addresses to import.';
+    return result.error || t('settings.importNothingNew');
   }
 
-  const plural = result.count === 1 ? 'address' : 'addresses';
+  const imported = t('settings.importedCount', { count: result.count });
   return notes.length > 0
-    ? `Imported ${result.count} ${plural} — ${notes.join(', ')}`
-    : `Imported ${result.count} ${plural}`;
+    ? t('settings.importedCountWithNotes', { imported, notes: notes.join(', ') })
+    : imported;
 };
 
-const THEME_OPTIONS: Array<{ mode: ThemeMode; icon: typeof MdLightMode; label: string }> = [
-  { mode: 'light', icon: MdLightMode, label: 'Light' },
-  { mode: 'dark', icon: MdDarkMode, label: 'Dark' },
-  { mode: 'system', icon: MdDevices, label: 'System' },
+const THEME_OPTIONS: Array<{ mode: ThemeMode; icon: typeof MdLightMode; labelKey: TranslationKey }> = [
+  { mode: 'light', icon: MdLightMode, labelKey: 'settings.themeLight' },
+  { mode: 'dark', icon: MdDarkMode, labelKey: 'settings.themeDark' },
+  { mode: 'system', icon: MdDevices, labelKey: 'settings.themeSystem' },
 ];
+
+const LANGUAGE_LABEL_KEYS: Record<Language, TranslationKey> = {
+  en: 'language.en',
+  es: 'language.es',
+};
 
 interface SettingsProps {
   onBack?: () => void;
@@ -79,6 +87,16 @@ export const Settings = ({ onBack }: SettingsProps) => {
   const [importResult, setImportResult] = useState<string | null>(null);
   const { hasPermissions } = usePermissions();
   const { accounts, currentAccount, themeMode, setThemeMode } = useApp();
+  const { t, localeTag, language, languages, setLanguage } = useI18n();
+  const formatNumber = useCallback(
+    (value: number, digits: number) =>
+      value.toLocaleString(localeTag, { minimumFractionDigits: digits, maximumFractionDigits: digits }),
+    [localeTag]
+  );
+  const formatKb = useCallback(
+    (bytes: number, digits: number) => formatNumber(bytes / 1024, digits),
+    [formatNumber]
+  );
   const [permissionState, setPermissionState] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importingRef = useRef(false);
@@ -140,10 +158,10 @@ export const Settings = ({ onBack }: SettingsProps) => {
   };
 
   const getDropdownLabel = () => {
-    if (selectedAccounts.length === 0) return 'Select accounts...';
-    if (selectedAccounts.length === accounts.length) return 'All accounts';
+    if (selectedAccounts.length === 0) return t('settings.selectAccounts');
+    if (selectedAccounts.length === accounts.length) return t('settings.allAccounts');
     if (selectedAccounts.length === 1) return `${selectedAccounts[0]}@duck.com`;
-    return `${selectedAccounts.length} accounts selected`;
+    return t('settings.accountsSelected', { count: selectedAccounts.length });
   };
 
   useEffect(() => {
@@ -186,7 +204,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
       if (message.action === 'syncAutoDisabled') {
         setSyncOptions(prev => ({ ...prev, enabled: false }));
         setSyncStats(null);
-        setImportResult('Sync was automatically disabled because storage quota was exceeded.');
+        setImportResult(t('settings.syncAutoDisabled'));
       }
     };
 
@@ -247,9 +265,9 @@ export const Settings = ({ onBack }: SettingsProps) => {
   };
 
   const getSyncAccountLabel = () => {
-    if (syncOptions.syncAccounts.length === 0) return 'All accounts';
+    if (syncOptions.syncAccounts.length === 0) return t('settings.allAccounts');
     if (syncOptions.syncAccounts.length === 1) return `${syncOptions.syncAccounts[0]}@duck.com`;
-    return `${syncOptions.syncAccounts.length} accounts selected`;
+    return t('settings.accountsSelected', { count: syncOptions.syncAccounts.length });
   };
 
   const isAccountSyncSelected = (username: string) => {
@@ -334,32 +352,32 @@ export const Settings = ({ onBack }: SettingsProps) => {
     const lines: string[] = [];
 
     if (s.action === 'export') {
-      lines.push(`Accounts: ${s.accounts.map(a => a.username + '@duck.com').join(', ')}`);
-      lines.push(`Addresses: ${s.totalAddresses}`);
-      lines.push(`Reverse aliases: ${s.totalReverseAliases}`);
-      if (s.includesSession) lines.push(`Session data: included`);
+      lines.push(t('settings.summaryAccounts', { accounts: s.accounts.map(a => a.username + '@duck.com').join(', ') }));
+      lines.push(t('settings.summaryAddresses', { count: s.totalAddresses }));
+      lines.push(t('settings.summaryReverseAliases', { count: s.totalReverseAliases }));
+      if (s.includesSession) lines.push(t('settings.summarySessionIncluded'));
     } else {
       if (s.newAccounts && s.newAccounts > 0) {
-        lines.push(`New accounts added: ${s.newAccounts}`);
+        lines.push(t('settings.summaryNewAccounts', { count: s.newAccounts }));
       }
       for (const a of s.accounts) {
         const parts: string[] = [];
-        if (a.addresses > 0) parts.push(`${a.addresses} addresses`);
-        if (a.reverseAliases > 0) parts.push(`${a.reverseAliases} reverse aliases`);
+        if (a.addresses > 0) parts.push(t('settings.summaryAddressCount', { count: a.addresses }));
+        if (a.reverseAliases > 0) parts.push(t('settings.summaryAliasCount', { count: a.reverseAliases }));
         if (parts.length > 0) {
-          lines.push(`${a.username}@duck.com: +${parts.join(', ')}`);
+          lines.push(t('settings.summaryAccountLine', { account: a.username, parts: parts.join(', ') }));
         }
       }
       if ((s.skippedAddresses || 0) > 0 || (s.skippedReverseAliases || 0) > 0) {
         const skipped: string[] = [];
-        if (s.skippedAddresses) skipped.push(`${s.skippedAddresses} addresses`);
-        if (s.skippedReverseAliases) skipped.push(`${s.skippedReverseAliases} reverse aliases`);
-        lines.push(`Skipped (already exist): ${skipped.join(', ')}`);
+        if (s.skippedAddresses) skipped.push(t('settings.summaryAddressCount', { count: s.skippedAddresses }));
+        if (s.skippedReverseAliases) skipped.push(t('settings.summaryAliasCount', { count: s.skippedReverseAliases }));
+        lines.push(t('settings.summarySkipped', { parts: skipped.join(', ') }));
       }
       if (s.newAddresses === 0 && s.newReverseAliases === 0 && (!s.newAccounts || s.newAccounts === 0)) {
-        lines.push('Everything was already up to date.');
+        lines.push(t('settings.summaryUpToDate'));
       }
-      if (s.includesSession) lines.push(`Session data: restored`);
+      if (s.includesSession) lines.push(t('settings.summarySessionRestored'));
     }
 
     return lines.join('\n');
@@ -398,7 +416,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
       setBackupSummary(summary);
     } catch (error) {
       console.error("Failed to export backup:", error);
-      setImportResult("Failed to export backup");
+      setImportResult(t('settings.exportFailed'));
     } finally {
       setLoading(prev => ({ ...prev, export: false }));
     }
@@ -412,7 +430,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
       const text = await file.text();
       await processImport(text);
     } catch (error) {
-      setImportResult("Import failed, invalid file");
+      setImportResult(t('settings.importFailedInvalidFile'));
     } finally {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -444,7 +462,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
         if (result.success && result.summary) {
           setBackupSummary(result.summary);
         } else {
-          setImportResult(`Import failed: ${result.error || 'Unknown error'}`);
+          setImportResult(t('settings.importFailedWithReason', { reason: result.error || t('common.unknownError') }));
         }
         setLoading(prev => ({ ...prev, import: false }));
         return;
@@ -453,16 +471,16 @@ export const Settings = ({ onBack }: SettingsProps) => {
       if (parsed.addresses && Array.isArray(parsed.addresses)) {
         setLoading(prev => ({ ...prev, import: true }));
         const result = await duckService.importAddresses(text);
-        setImportResult(describeAddressImport(result));
+        setImportResult(describeAddressImport(result, t));
         setLoading(prev => ({ ...prev, import: false }));
         return;
       }
 
-      setImportResult("Unrecognized file format");
+      setImportResult(t('settings.unrecognizedFormat'));
     } catch {
       setLoading(prev => ({ ...prev, import: true }));
       const result = await duckService.importAddressList(text);
-      setImportResult(describeAddressImport(result));
+      setImportResult(describeAddressImport(result, t));
       setLoading(prev => ({ ...prev, import: false }));
     } finally {
       importingRef.current = false;
@@ -480,10 +498,10 @@ export const Settings = ({ onBack }: SettingsProps) => {
       if (result.success && result.summary) {
         setBackupSummary(result.summary);
       } else if (!result.success) {
-        setImportResult(`Import failed: ${result.error || 'Unknown error'}`);
+        setImportResult(t('settings.importFailedWithReason', { reason: result.error || t('common.unknownError') }));
       }
     } catch (error) {
-      setImportResult("Import failed");
+      setImportResult(t('settings.importFailed'));
     } finally {
       setPendingImportData(null);
       setLoading(prev => ({ ...prev, import: false }));
@@ -533,16 +551,16 @@ export const Settings = ({ onBack }: SettingsProps) => {
       {onBack && (
         <BackButton onClick={onBack}>
           <MdArrowBack size={20} />
-          Back to Dashboard
+          {t('common.backToDashboard')}
         </BackButton>
       )}
       <Section>
         <SectionHeader>
-          <h2><MdPalette size={20} style={{ marginRight: '8px' }} />Appearance</h2>
+          <h2><MdPalette size={20} style={{ marginRight: '8px' }} />{t('settings.appearance')}</h2>
         </SectionHeader>
-        <ThemeOptionLabel>Theme</ThemeOptionLabel>
+        <ThemeOptionLabel>{t('settings.theme')}</ThemeOptionLabel>
         <ThemeOptionGroup>
-          {THEME_OPTIONS.map(({ mode, icon: Icon, label }) => (
+          {THEME_OPTIONS.map(({ mode, icon: Icon, labelKey }) => (
             <ThemeOptionButton
               key={mode}
               type="button"
@@ -551,7 +569,25 @@ export const Settings = ({ onBack }: SettingsProps) => {
               onClick={() => setThemeMode(mode)}
             >
               <Icon size={16} />
-              {label}
+              {t(labelKey)}
+            </ThemeOptionButton>
+          ))}
+        </ThemeOptionGroup>
+        <ThemeOptionLabel>
+          <MdTranslate size={14} style={{ marginRight: '6px', verticalAlign: 'text-bottom' }} />
+          {t('settings.language')}
+        </ThemeOptionLabel>
+        <ThemeOptionGroup>
+          {languages.map(code => (
+            <ThemeOptionButton
+              key={code}
+              type="button"
+              active={language === code}
+              aria-pressed={language === code}
+              lang={code}
+              onClick={() => setLanguage(code)}
+            >
+              {t(LANGUAGE_LABEL_KEYS[code])}
             </ThemeOptionButton>
           ))}
         </ThemeOptionGroup>
@@ -564,19 +600,18 @@ export const Settings = ({ onBack }: SettingsProps) => {
             />
             <SyncToggleSlider />
           </SyncToggleSwitch>
-          24-hour time
+          {t('settings.timeFormat24h')}
         </SyncOptionRow>
       </Section>
 
       <Section>
         <SectionHeader>
-          <h2><MdSecurity size={20} style={{ marginRight: '8px' }} />Permissions & features</h2>
+          <h2><MdSecurity size={20} style={{ marginRight: '8px' }} />{t('settings.permissions')}</h2>
         </SectionHeader>
         {ALL_PERMISSIONS.map(permission => (
           <PermissionToggle
             key={permission}
-            name={PERMISSIONS[permission].name}
-            description={PERMISSIONS[permission].description}
+            permission={permission}
             isEnabled={permission === 'storage' || permission === 'contextMenu' ? true : permissionState[permission] || false}
             onChange={(enabled) => togglePermission(permission, enabled)}
             disabled={false}
@@ -588,7 +623,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
         <SectionHeader>
           <h2>
             <MdSync size={20} style={{ marginRight: '8px' }} />
-            Sync
+            {t('settings.sync')}
           </h2>
           <SyncToggleSwitch>
             <SyncToggleInput
@@ -624,7 +659,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
                         />
                         {account.username}@duck.com
                         {account.username === currentAccount && (
-                          <SyncOptionHint>(current)</SyncOptionHint>
+                          <SyncOptionHint>{t('common.current')}</SyncOptionHint>
                         )}
                       </DropdownItem>
                     ))}
@@ -634,7 +669,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
             )}
 
             <SyncOptionsContainer>
-              <SyncOptionsTitle>Sync options</SyncOptionsTitle>
+              <SyncOptionsTitle>{t('settings.syncOptions')}</SyncOptionsTitle>
               <SyncOptionRow>
                 <SyncToggleSwitch>
                   <SyncToggleInput
@@ -644,7 +679,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
                   />
                   <SyncToggleSlider />
                 </SyncToggleSwitch>
-                Addresses
+                {t('settings.syncAddresses')}
               </SyncOptionRow>
               <SyncOptionRow>
                 <SyncToggleSwitch>
@@ -655,7 +690,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
                   />
                   <SyncToggleSlider />
                 </SyncToggleSwitch>
-                Reverse Aliases
+                {t('settings.syncReverseAliases')}
               </SyncOptionRow>
               <SyncOptionRow>
                 <SyncToggleSwitch>
@@ -666,14 +701,14 @@ export const Settings = ({ onBack }: SettingsProps) => {
                   />
                   <SyncToggleSlider />
                 </SyncToggleSwitch>
-                Session Data
-                <SyncOptionHint>(login data & settings)</SyncOptionHint>
+                {t('settings.syncSessionData')}
+                <SyncOptionHint>{t('settings.syncSessionHint')}</SyncOptionHint>
               </SyncOptionRow>
               {syncOptions.session && (
                 <div style={{ marginLeft: '56px', marginTop: '4px', fontSize: '12px', color: '#ff9f19' }}>
                   {isFirefox
-                    ? 'Session data includes your access tokens. They are encrypted by Firefox during sync but stored in your Mozilla account.'
-                    : 'Session data includes your access tokens. They are encrypted by Chrome during sync but stored in your Google account.'}
+                    ? t('settings.syncTokenWarningFirefox')
+                    : t('settings.syncTokenWarningChrome')}
                 </div>
               )}
             </SyncOptionsContainer>
@@ -682,13 +717,13 @@ export const Settings = ({ onBack }: SettingsProps) => {
               <SyncStatsContainer>
                 <SyncStatRow>
                   <div>
-                    <strong>Status:</strong> {syncStats.lastSync ? `Last synced ${new Date(syncStats.lastSync).toLocaleString()}` : 'Never synced'}
+                    <strong>{t('settings.syncStatus')}</strong> {syncStats.lastSync ? t('settings.syncLastSynced', { date: new Date(syncStats.lastSync).toLocaleString(localeTag) }) : t('settings.syncNever')}
                   </div>
                   <SyncStatValue>
                     <RefreshIconButton
                       onClick={handleRefreshSync}
                       disabled={loading.refreshSync}
-                      title="Refresh"
+                      title={t('settings.syncRefresh')}
                     >
                       <MdRefresh size={16} />
                     </RefreshIconButton>
@@ -696,7 +731,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
                 </SyncStatRow>
                 <SyncStatRow>
                   <div>
-                    <strong>Storage used:</strong> {(syncStats.bytesInUse / 1024).toFixed(2)} KB / {(syncStats.quotaBytes / 1024).toFixed(0)} KB ({syncStats.percentUsed.toFixed(1)}%)
+                    <strong>{t('settings.syncStorageUsed')}</strong> {formatKb(syncStats.bytesInUse, 2)} KB / {formatKb(syncStats.quotaBytes, 0)} KB ({formatNumber(syncStats.percentUsed, 1)}%)
                   </div>
                 </SyncStatRow>
               </SyncStatsContainer>
@@ -707,7 +742,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
 
       <Section>
         <SectionHeader>
-          <h2><MdDescription size={20} style={{ marginRight: '8px' }} />Backup & restore</h2>
+          <h2><MdDescription size={20} style={{ marginRight: '8px' }} />{t('settings.backup')}</h2>
         </SectionHeader>
 
         <ExportButtonsContainer>
@@ -716,24 +751,23 @@ export const Settings = ({ onBack }: SettingsProps) => {
             disabled={loading.export || selectedAccounts.length === 0}
           >
             <MdDownload size={20} />
-            {loading.export ? 'Exporting...' : 'Export backup'}
+            {loading.export ? t('settings.exporting') : t('settings.exportBackup')}
           </BackupButton>
           <BackupButton
             onClick={isFirefoxPopup ? () => setShowPopoutPrompt(true) : handleImportClick}
             disabled={loading.import}
           >
             <MdFileUpload size={20} />
-            {loading.import ? 'Importing...' : 'Import backup'}
+            {loading.import ? t('settings.importing') : t('settings.importBackup')}
           </BackupButton>
         </ExportButtonsContainer>
 
         <ExportOptionHint style={{ display: 'block', marginBottom: '16px' }}>
-          Import accepts a Qwacky backup (.json), or a plain .txt list of existing
-          duck.com addresses — one per line.
+          {t('settings.importHint')}
         </ExportOptionHint>
 
         <ExportOptionsContainer>
-          <ExportOptionsTitle>Export options</ExportOptionsTitle>
+          <ExportOptionsTitle>{t('settings.exportOptions')}</ExportOptionsTitle>
 
           {accounts.length > 1 && (
             <DropdownWrapper ref={dropdownRef}>
@@ -756,7 +790,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
                       />
                       {account.username}@duck.com
                       {account.username === currentAccount && (
-                        <ExportOptionHint>(current)</ExportOptionHint>
+                        <ExportOptionHint>{t('common.current')}</ExportOptionHint>
                       )}
                     </DropdownItem>
                   ))}
@@ -774,8 +808,8 @@ export const Settings = ({ onBack }: SettingsProps) => {
               />
               <SyncToggleSlider />
             </SyncToggleSwitch>
-            Include session
-            <ExportOptionHint>(login data & settings)</ExportOptionHint>
+            {t('settings.includeSession')}
+            <ExportOptionHint>{t('settings.syncSessionHint')}</ExportOptionHint>
           </ExportOptionRow>
         </ExportOptionsContainer>
 
@@ -795,10 +829,10 @@ export const Settings = ({ onBack }: SettingsProps) => {
       <ConfirmDialog
         isOpen={showPopoutPrompt}
         variant="info"
-        title="Open in new window"
-        message="Firefox doesn't allow file selection from the popup. The extension will open in a new window where you can import your backup normally."
-        confirmLabel="Open window"
-        cancelLabel="Cancel"
+        title={t('settings.popoutTitle')}
+        message={t('settings.popoutMessage')}
+        confirmLabel={t('settings.popoutConfirm')}
+        cancelLabel={t('common.cancel')}
         onConfirm={() => {
           setShowPopoutPrompt(false);
           chrome.runtime.sendMessage({ action: 'popoutExtension' });
@@ -810,10 +844,10 @@ export const Settings = ({ onBack }: SettingsProps) => {
       <ConfirmDialog
         isOpen={showExportWarning}
         variant="warning"
-        title="Security warning"
-        message="The exported file will contain your access token and login credentials. Keep this file secure and do not share it. Anyone with this file can access your DuckDuckGo Email account."
-        confirmLabel="Export anyway"
-        cancelLabel="Cancel"
+        title={t('settings.exportWarningTitle')}
+        message={t('settings.exportWarningMessage')}
+        confirmLabel={t('settings.exportWarningConfirm')}
+        cancelLabel={t('common.cancel')}
         onConfirm={() => {
           setShowExportWarning(false);
           doExport();
@@ -824,10 +858,10 @@ export const Settings = ({ onBack }: SettingsProps) => {
       <ConfirmDialog
         isOpen={showImportConfirm}
         variant="warning"
-        title="Import backup"
-        message="This backup contains session data. Importing it will add the accounts and their data to your extension. Are you sure?"
-        confirmLabel="Import"
-        cancelLabel="Cancel"
+        title={t('settings.importConfirmTitle')}
+        message={t('settings.importConfirmMessage')}
+        confirmLabel={t('settings.importConfirmButton')}
+        cancelLabel={t('common.cancel')}
         onConfirm={handleImportConfirmed}
         onCancel={() => {
           setShowImportConfirm(false);
@@ -838,9 +872,9 @@ export const Settings = ({ onBack }: SettingsProps) => {
       <ConfirmDialog
         isOpen={backupSummary !== null}
         variant="info"
-        title={backupSummary?.action === 'export' ? 'Export complete' : 'Import complete'}
+        title={backupSummary?.action === 'export' ? t('settings.exportComplete') : t('settings.importComplete')}
         message={backupSummary ? buildSummaryMessage(backupSummary) : ''}
-        confirmLabel="Close"
+        confirmLabel={t('common.close')}
         singleButton
         onConfirm={async () => {
           const isImport = backupSummary?.action === 'import';

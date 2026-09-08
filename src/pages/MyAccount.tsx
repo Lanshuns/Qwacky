@@ -5,6 +5,7 @@ import { DuckService } from '../services/DuckService'
 import { useNotification } from '../components/Notification'
 import { UserInfoSection } from '../components/UserInfoSection'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { useI18n } from '../i18n'
 import { BackButton } from '../styles/SharedStyles'
 import { MyAccountContainer, ManageAccountButton, DeleteAccountButton } from '../styles/pages.styles'
 
@@ -15,6 +16,7 @@ interface MyAccountProps {
 export const MyAccount = ({ onBack }: MyAccountProps) => {
   const { userData, currentAccount, deleteCurrentAccount } = useApp()
   const { showNotification, NotificationRenderer } = useNotification()
+  const { t } = useI18n()
   const duckService = useMemo(() => new DuckService(), [])
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false)
   const [removing, setRemoving] = useState(false)
@@ -29,9 +31,9 @@ export const MyAccount = ({ onBack }: MyAccountProps) => {
   const copyToClipboard = useCallback(async (text: string, event?: MouseEvent) => {
     try {
       await navigator.clipboard.writeText(text)
-      showNotification('Copied!', event)
+      showNotification(t('common.copied'), event)
     } catch {
-      showNotification('Failed to copy', event)
+      showNotification(t('common.failedToCopy'), event)
     }
   }, [showNotification])
 
@@ -47,23 +49,26 @@ export const MyAccount = ({ onBack }: MyAccountProps) => {
     if (result.status === 'success') {
       onBack()
     } else {
-      showNotification(result.message || 'Failed to remove account')
+      showNotification(result.message || t('myAccount.removeFailed'))
     }
   }
 
   if (!userData) return null
 
-  const accountLabel = currentAccount ? `${currentAccount}@duck.com` : 'this account'
-  const addressText = `${counts.addresses} saved address${counts.addresses === 1 ? '' : 'es'}`
+  const accountLabel = currentAccount ? `${currentAccount}@duck.com` : t('myAccount.thisAccount')
+  const addressText = t('myAccount.savedAddresses', { count: counts.addresses })
   const removedParts = counts.aliases > 0
-    ? `${addressText} and ${counts.aliases} reverse alias${counts.aliases === 1 ? '' : 'es'}`
+    ? t('myAccount.addressesAndAliases', {
+        addresses: addressText,
+        aliases: t('myAccount.reverseAliases', { count: counts.aliases })
+      })
     : addressText
 
   return (
     <MyAccountContainer>
       <BackButton onClick={onBack}>
         <MdArrowBack size={20} />
-        Back
+        {t('common.back')}
       </BackButton>
 
       <UserInfoSection
@@ -74,22 +79,22 @@ export const MyAccount = ({ onBack }: MyAccountProps) => {
 
       <ManageAccountButton onClick={handleOpenDuckDuckGoEmail}>
         <MdOpenInNew size={20} />
-        Manage your duck account
+        {t('myAccount.manage')}
         <MdOpenInNew size={16} />
       </ManageAccountButton>
 
       <DeleteAccountButton onClick={() => setShowRemoveConfirm(true)} disabled={removing}>
         <MdDeleteOutline size={20} />
-        {removing ? 'Removing...' : 'Remove account local data'}
+        {removing ? t('myAccount.removing') : t('myAccount.remove')}
       </DeleteAccountButton>
 
       <ConfirmDialog
         isOpen={showRemoveConfirm}
         variant="warning"
-        title="Remove account local data"
-        message={`You're about to remove ${accountLabel} along with its ${removedParts} from this device and from sync. Your DuckDuckGo account itself is not affected. This cannot be undone.`}
-        confirmLabel="Remove"
-        cancelLabel="Cancel"
+        title={t('myAccount.removeTitle')}
+        message={t('myAccount.removeMessage', { account: accountLabel, data: removedParts })}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
         onConfirm={handleRemoveAccount}
         onCancel={() => setShowRemoveConfirm(false)}
       />

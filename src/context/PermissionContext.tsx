@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { TranslationKey } from '../i18n/core'
 
 interface ExtendedPermissionEvent extends chrome.events.Event<() => void> {
   addListener: (callback: () => void) => void;
@@ -25,34 +26,39 @@ const isFirefox = navigator.userAgent.toLowerCase().includes('firefox')
 type PermissionType = 'storage' | 'contextMenuFeatures' | 'contextMenu'
 
 interface Permission {
-  name: string
-  description: string
+  /** Stable identifier — never shown to the user. */
+  id: PermissionType
+  nameKey: TranslationKey
+  descriptionKey: TranslationKey
   isRequired: boolean
   permissions: string[]
-  browserSpecificInfo?: {
-    firefox?: string
-    chrome?: string
+  browserSpecificInfoKey?: {
+    firefox?: TranslationKey
+    chrome?: TranslationKey
   }
 }
 
 export const PERMISSIONS: Record<PermissionType, Permission> = {
   storage: {
-    name: 'Storage',
-    description: '`storage`\nRequired for the extension to function properly, to store and retrieve data locally',
+    id: 'storage',
+    nameKey: 'permission.storage.name',
+    descriptionKey: 'permission.storage.description',
     isRequired: true,
     permissions: ['storage']
   },
   contextMenu: {
-    name: 'Context menu',
-    description: '`contextMenus`\nFirefox requires this permission to be listed in the manifest\'s permissions block at install time, [Read More](https://github.com/Lanshuns/Qwacky?tab=readme-ov-file#browser-specific-permission-handling-and-limitations)',
+    id: 'contextMenu',
+    nameKey: 'permission.contextMenu.name',
+    descriptionKey: 'permission.contextMenu.description',
     isRequired: true,
     permissions: ['contextMenus']
   },
   contextMenuFeatures: {
-    name: 'Autofill',
-    description: isFirefox
-      ? '`activeTab`, `clipboardWrite` and `scripting`\nEnables the Qwacky options in the context menu, to generate a duck address or convert a recipient into a send address'
-      : '`contextMenus`, `activeTab`, `clipboardWrite` and `scripting`\nEnables the Qwacky options in the context menu, to generate a duck address or convert a recipient into a send address',
+    id: 'contextMenuFeatures',
+    nameKey: 'permission.autofill.name',
+    descriptionKey: isFirefox
+      ? 'permission.autofill.descriptionFirefox'
+      : 'permission.autofill.descriptionChrome',
     isRequired: false,
     permissions: [
       'activeTab',
@@ -61,7 +67,6 @@ export const PERMISSIONS: Record<PermissionType, Permission> = {
     ]
   }
 }
-
 interface PermissionContextType {
   checkPermission: (permission: PermissionType) => Promise<boolean>
   requestPermissions: (type: PermissionType) => Promise<boolean>

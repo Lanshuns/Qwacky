@@ -1,5 +1,6 @@
 import { UserData, ReverseAlias, TimeFormat } from '../types';
 import { SyncService } from './SyncService';
+import { t } from '../i18n/core';
 
 interface Address {
   value: string;
@@ -373,7 +374,7 @@ export class StorageService {
   async deleteAccount(username: string): Promise<{ status: 'success' | 'error'; loggedOut?: boolean; message?: string }> {
     try {
       if (!username) {
-        return { status: 'error', message: 'Username is required' };
+        return { status: 'error', message: t('error.usernameRequired') };
       }
 
       const result = await chrome.storage.local.get(['accounts', 'currentAccount', 'generated_addresses']);
@@ -414,7 +415,7 @@ export class StorageService {
 
       return { status: 'success', loggedOut };
     } catch (error) {
-      return { status: 'error', message: error instanceof Error ? error.message : 'Failed to delete account' };
+      return { status: 'error', message: error instanceof Error ? error.message : t('error.deleteAccountFailed') };
     }
   }
 

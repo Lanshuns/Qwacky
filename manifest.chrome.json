@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Qwacky",
+  "name": "__MSG_extensionName__",
+  "default_locale": "en",
   "version": "2.1.0",
-  "description": "Qwacky is an open source client for DuckDuckGo Email Protection, To manage and generate @duck.com aliases.",
+  "description": "__MSG_extensionDescription__",
   "icons": {
     "16": "assets/icons/qwacky-16.png",
     "48": "assets/icons/qwacky-48.png",
@@ -57,13 +58,13 @@
       "suggested_key": {
         "default": "Alt+Shift+Q"
       },
-      "description": "Generate and fill duck address"
+      "description": "__MSG_commandGenerateAddress__"
     },
     "convert-send-address": {
       "suggested_key": {
         "default": "Alt+Shift+S"
       },
-      "description": "Convert the selected recipient into a send address"
+      "description": "__MSG_commandConvertAddress__"
     }
   }
 }

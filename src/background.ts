@@ -16,6 +16,7 @@ const api: FirefoxBrowserType = typeof browser !== 'undefined' ? browser : chrom
 import { DuckService } from './services/DuckService'
 import { SyncService } from './services/SyncService'
 import { errorMessage } from './utils/safeOps'
+import { initI18n, t, watchLanguageChanges } from './i18n/core'
 
 const duckService = new DuckService()
 const syncService = new SyncService()
@@ -91,7 +92,7 @@ const ContextMenu = {
       return new Promise<boolean>((resolve) => {
         api.contextMenus.create({
           id: PARENT_MENU_ID,
-          title: 'Qwacky',
+          title: t('contextMenu.parent'),
           contexts: ['editable']
         }, () => {
           const error = chrome.runtime.lastError;
@@ -103,13 +104,13 @@ const ContextMenu = {
           api.contextMenus.create({
             id: CONTEXT_MENU_ID,
             parentId: PARENT_MENU_ID,
-            title: 'Autofill duck address',
+            title: t('contextMenu.generate'),
             contexts: ['editable']
           }, () => { void chrome.runtime.lastError; });
           api.contextMenus.create({
             id: CONVERT_MENU_ID,
             parentId: PARENT_MENU_ID,
-            title: 'Convert to send address',
+            title: t('contextMenu.convert'),
             contexts: ['editable']
           }, () => { void chrome.runtime.lastError; });
           resolve(true);
@@ -203,6 +204,20 @@ api.runtime.onInstalled.addListener(() => {
   setTimeout(initialize, 1000)
 })
 
+void initI18n()
+watchLanguageChanges()
+
+// Menu titles are baked in when the items are created, so rebuild them
+// whenever the user picks a different language.
+api.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== 'local' || !changes.language) return
+  void (async () => {
+    if (await FeatureState.get()) {
+      await ContextMenu.create()
+    }
+  })()
+})
+
 setTimeout(initialize, 1000)
 
 api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -294,7 +309,7 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (message.action === 'requestOTP') {
     if (typeof message.username !== 'string') {
-      sendResponse({ status: 'error', message: 'Invalid username' })
+      sendResponse({ status: 'error', message: t('autoLogin.invalidUsername') })
       return true
     }
     duckService.login(message.username)
@@ -305,7 +320,7 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (message.action === 'verifyOTP') {
     if (typeof message.username !== 'string' || typeof message.otp !== 'string') {
-      sendResponse({ status: 'error', message: 'Invalid credentials' })
+      sendResponse({ status: 'error', message: t('autoLogin.invalidCredentials') })
       return true
     }
     duckService.verifyOTP(message.username, message.otp)
@@ -316,7 +331,7 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (message.action === 'auto-login') {
     if (typeof message.token !== 'string') {
-      sendResponse({ status: 'error', message: 'Invalid token' })
+      sendResponse({ status: 'error', message: t('autoLogin.invalidToken') })
       return true
     }
 
@@ -332,15 +347,15 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
         const dashboardResponse = await fetch('https://quack.duckduckgo.com/api/email/dashboard', { headers })
         if (!dashboardResponse.ok) {
-          await api.storage.local.set({ auto_login_error: 'Failed to load dashboard data. Please log in manually.' })
-          sendResponse({ status: 'error', message: 'Failed to load dashboard data.' })
+          await api.storage.local.set({ auto_login_error: t('autoLogin.dashboardFailed') })
+          sendResponse({ status: 'error', message: t('error.dashboardFailed') })
           return
         }
 
         const dashboardData = await dashboardResponse.json()
         if (!dashboardData?.user) {
-          await api.storage.local.set({ auto_login_error: 'Invalid response from server. Please log in manually.' })
-          sendResponse({ status: 'error', message: 'Invalid dashboard data.' })
+          await api.storage.local.set({ auto_login_error: t('autoLogin.invalidResponse') })
+          sendResponse({ status: 'error', message: t('error.dashboardFailed') })
           return
         }
 
@@ -350,8 +365,8 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
         const resolvedUsername = dashboardData.user.username || username
         if (!resolvedUsername) {
-          await api.storage.local.set({ auto_login_error: 'Could not determine username. Please log in manually.' })
-          sendResponse({ status: 'error', message: 'Could not determine username.' })
+          await api.storage.local.set({ auto_login_error: t('autoLogin.noUsername') })
+          sendResponse({ status: 'error', message: t('autoLogin.noUsername') })
           return
         }
 
@@ -360,7 +375,7 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
         const existing = accounts.find(acc => acc.username === resolvedUsername)
         if (existing && result.currentAccount === resolvedUsername) {
-          sendResponse({ status: 'success', message: 'Already logged in.' })
+          sendResponse({ status: 'success', message: t('autoLogin.alreadyLoggedIn') })
           return
         }
 
@@ -388,7 +403,7 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
         sendResponse({ status: 'success' })
       } catch (err) {
-        await api.storage.local.set({ auto_login_error: 'Auto-login failed. Please log in manually.' })
+        await api.storage.local.set({ auto_login_error: t('autoLogin.generic') })
         sendResponse({ status: 'error', message: errorMessage(err) })
       }
     })()
@@ -405,6 +420,24 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return false
 })
 
+/**
+ * The content script is injected as a classic script and cannot import the
+ * locale bundles, so it receives its notification strings from here.
+ */
+const fillMessages = () => ({
+  okCopied: t('notify.filledAndCopied'),
+  okNotCopied: t('notify.filledNotCopied'),
+  failCopied: t('notify.fillFailedCopied'),
+  failNotCopied: t('notify.fillFailedNotCopied')
+})
+
+const convertMessages = () => ({
+  okCopied: t('notify.convertedAndCopied'),
+  okNotCopied: t('notify.convertedNotCopied'),
+  failCopied: t('notify.replaceFailedCopied'),
+  failNotCopied: t('notify.replaceFailedNotCopied')
+})
+
 const performConvert = async (tabId: number, selectionText: string) => {
   try {
     await api.scripting.executeScript({
@@ -419,7 +452,7 @@ const performConvert = async (tabId: number, selectionText: string) => {
       try {
         await api.tabs.sendMessage(tabId, {
           type: 'show-notification',
-          message: 'Select a recipient email to convert'
+          message: t('notify.selectRecipient')
         });
       } catch {
       }
@@ -431,7 +464,7 @@ const performConvert = async (tabId: number, selectionText: string) => {
       try {
         await api.tabs.sendMessage(tabId, {
           type: 'show-notification',
-          message: 'You need to login first'
+          message: t('notify.loginFirst')
         });
       } catch {
       }
@@ -445,7 +478,8 @@ const performConvert = async (tabId: number, selectionText: string) => {
       await api.tabs.sendMessage(tabId, {
         type: 'replace-selection',
         text: alias,
-        find: email
+        find: email,
+        messages: convertMessages()
       });
     } catch {
     }
@@ -472,7 +506,7 @@ if (api.contextMenus) {
           try {
             await api.tabs.sendMessage(tab.id, {
               type: 'show-notification',
-              message: response.message || 'Failed to generate address. Login required?'
+              message: response.message || t('notify.generateFailed')
             });
           } catch {
           }
@@ -487,7 +521,8 @@ if (api.contextMenus) {
         try {
           await api.tabs.sendMessage(tab.id, {
             type: 'fill-address',
-            address: response.address
+            address: response.address,
+            messages: fillMessages()
           });
         } catch {
         }
@@ -547,7 +582,7 @@ if (api.commands) {
         try {
           await api.tabs.sendMessage(activeTab.id, {
             type: 'show-notification',
-            message: response.message || 'Failed to generate address. Login required?'
+            message: response.message || t('notify.generateFailed')
           });
         } catch {
         }
@@ -562,7 +597,8 @@ if (api.commands) {
       try {
         await api.tabs.sendMessage(activeTab.id, {
           type: 'fill-address',
-          address: response.address
+          address: response.address,
+          messages: fillMessages()
         });
       } catch {
       }

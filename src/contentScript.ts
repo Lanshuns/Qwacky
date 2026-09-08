@@ -2,6 +2,20 @@ type BrowserType = typeof chrome;
 declare const browser: BrowserType;
 const api: BrowserType = typeof browser !== 'undefined' ? browser : chrome;
 
+/** Notification strings, already translated by the background page. */
+interface ResultMessages {
+  okCopied: string
+  okNotCopied: string
+  failCopied: string
+  failNotCopied: string
+}
+
+const pickMessage = (messages: ResultMessages | undefined, ok: boolean, copied: boolean): string => {
+  if (!messages) return ''
+  if (ok) return copied ? messages.okCopied : messages.okNotCopied
+  return copied ? messages.failCopied : messages.failNotCopied
+}
+
 const setupConnection = () => {
   try {
     api.runtime.connect();
@@ -29,7 +43,7 @@ const showNotification = (message: string) => {
   Object.assign(notification.style, styles)
   notification.setAttribute('role', 'status')
   notification.setAttribute('aria-live', 'polite')
-  notification.textContent = message === 'Not authenticated' ? 'You need to login first' : message
+  notification.textContent = message
   document.body.appendChild(notification)
   
   setTimeout(() => {
@@ -115,30 +129,14 @@ if (!(window as unknown as { __qwackyContentScript?: boolean }).__qwackyContentS
 
       const copied = await copyToClipboard(`${message.address}@duck.com`);
 
-      if (!filled) {
-        showNotification(copied
-          ? 'Could not fill input, address copied to clipboard'
-          : 'Could not fill input or copy to clipboard. Please check permissions in settings.');
-      } else {
-        showNotification(copied
-          ? 'Address filled and copied to clipboard'
-          : 'Address filled but could not copy to clipboard. Please check permissions in settings.');
-      }
+      showNotification(pickMessage(message.messages, filled, copied));
     }
 
     if (message.type === 'replace-selection') {
       const replaced = replaceSelection(message.text, message.find)
       const copied = await copyToClipboard(message.text)
 
-      if (!replaced) {
-        showNotification(copied
-          ? 'Could not replace selection, address copied to clipboard'
-          : 'Could not replace selection or copy to clipboard. Please check permissions in settings.');
-      } else {
-        showNotification(copied
-          ? 'Converted and copied to clipboard'
-          : 'Converted, but could not copy to clipboard. Please check permissions in settings.');
-      }
+      showNotification(pickMessage(message.messages, replaced, copied));
     }
 
     if (message.type === 'show-notification') {
