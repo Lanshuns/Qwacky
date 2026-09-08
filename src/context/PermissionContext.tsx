@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { contextMenusUnsupportedOnPlatform } from '../utils/platform'
 
 interface ExtendedPermissionEvent extends chrome.events.Event<() => void> {
   addListener: (callback: () => void) => void;
@@ -58,7 +59,10 @@ export const PERMISSIONS: Record<PermissionType, Permission> = {
       'activeTab',
       'clipboardWrite',
       'scripting'
-    ]
+    ],
+    browserSpecificInfo: contextMenusUnsupportedOnPlatform
+      ? { firefox: 'Not available on Firefox for Android: the browser has no extension context menus or keyboard shortcuts. Everything else in the popup works as normal.' }
+      : undefined
   }
 }
 

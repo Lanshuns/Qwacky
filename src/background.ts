@@ -16,6 +16,7 @@ const api: FirefoxBrowserType = typeof browser !== 'undefined' ? browser : chrom
 import { DuckService } from './services/DuckService'
 import { SyncService } from './services/SyncService'
 import { errorMessage } from './utils/safeOps'
+import { contextMenusUnsupportedOnPlatform } from './utils/platform'
 
 const duckService = new DuckService()
 const syncService = new SyncService()
@@ -131,44 +132,50 @@ const ContextMenu = {
   }
 }
 
+type FeatureResult = { success: boolean; reason?: 'unsupported' | 'permissions' | 'error' }
+
 const Feature = {
-  async enable(): Promise<boolean> {
+  async enable(): Promise<FeatureResult> {
     try {
+      if (contextMenusUnsupportedOnPlatform) {
+        return { success: false, reason: 'unsupported' }
+      }
+
       const hasPermissions = await Permissions.check()
-      
+
       if (!hasPermissions) {
         console.error('Missing required permissions')
-        return false
+        return { success: false, reason: 'permissions' }
+      }
+
+      const menuCreated = await ContextMenu.create()
+
+      if (!menuCreated) {
+        console.error('Failed to create context menu')
+        return { success: false, reason: 'error' }
       }
 
       await FeatureState.set(true)
-      const menuCreated = await ContextMenu.create()
-      
-      if (!menuCreated) {
-        console.error('Failed to create context menu')
-        await FeatureState.set(false)
-      }
-      
-      return menuCreated
+      return { success: true }
     } catch (error) {
       console.error('Error enabling feature:', error)
       await FeatureState.set(false)
-      return false
+      return { success: false, reason: 'error' }
     }
   },
 
-  async disable(): Promise<boolean> {
+  async disable(): Promise<FeatureResult> {
     try {
       const removed = await ContextMenu.remove()
       await FeatureState.set(false)
-      return removed
+      return removed ? { success: true } : { success: false, reason: 'error' }
     } catch (error) {
       console.error('Error disabling feature:', error)
-      return false
+      return { success: false, reason: 'error' }
     }
   },
 
-  async toggle(enabled: boolean): Promise<boolean> {
+  async toggle(enabled: boolean): Promise<FeatureResult> {
     return enabled ? this.enable() : this.disable()
   }
 }
@@ -184,7 +191,7 @@ const initialize = async () => {
       await FeatureState.set(false)
     }
 
-    const shouldBeEnabled = hasState[FEATURE_STATE_KEY] && hasPermissions
+    const shouldBeEnabled = hasState[FEATURE_STATE_KEY] && hasPermissions && !contextMenusUnsupportedOnPlatform
     if (shouldBeEnabled) {
       await ContextMenu.create()
     } else {
@@ -219,8 +226,8 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   
   if (message.action === 'toggleFeature') {
     Feature.toggle(message.enabled)
-      .then(success => sendResponse({ success }))
-      .catch(() => sendResponse({ success: false }))
+      .then(result => sendResponse(result))
+      .catch(() => sendResponse({ success: false, reason: 'error' }))
     return true
   }
   

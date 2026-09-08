@@ -5,6 +5,7 @@ import { StorageService } from "../services/StorageService";
 import { SyncService, SyncOptions } from "../services/SyncService";
 import { ImportAddressesResult } from "../services/ImportExportService";
 import { usePermissions, PERMISSIONS, ALL_PERMISSIONS } from "../context/PermissionContext";
+import { contextMenusUnsupportedOnPlatform } from "../utils/platform";
 import { useApp, ThemeMode } from "../context/AppContext";
 import { BackupSummary, TimeFormat } from "../types";
 import { PermissionToggle } from "../components/PermissionToggle";
@@ -577,9 +578,11 @@ export const Settings = ({ onBack }: SettingsProps) => {
             key={permission}
             name={PERMISSIONS[permission].name}
             description={PERMISSIONS[permission].description}
-            isEnabled={permission === 'storage' || permission === 'contextMenu' ? true : permissionState[permission] || false}
+            isEnabled={permission === 'storage' || permission === 'contextMenu'
+              ? true
+              : !contextMenusUnsupportedOnPlatform && (permissionState[permission] || false)}
             onChange={(enabled) => togglePermission(permission, enabled)}
-            disabled={false}
+            disabled={permission === 'contextMenuFeatures' && contextMenusUnsupportedOnPlatform}
           />
         ))}
       </Section>

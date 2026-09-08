@@ -165,7 +165,12 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
             api.runtime.sendMessage({ action: 'reload-extension' })
           }, 1500)
         } else {
-          setStatus({ message: 'Failed to enable feature', type: 'error' })
+          setStatus({
+            message: response?.reason === 'unsupported'
+              ? 'Autofill is not supported in this browser'
+              : 'Failed to enable feature',
+            type: 'error'
+          })
           onChange(false)
         }
       } else {
