@@ -436,6 +436,15 @@ export class StorageService {
     await chrome.storage.local.set({ hide_generated_addresses: hide });
   }
 
+  async getNeverSaveAddresses(): Promise<boolean> {
+    const result = await chrome.storage.local.get('never_save_addresses');
+    return result.never_save_addresses || false;
+  }
+
+  async setNeverSaveAddresses(neverSave: boolean): Promise<void> {
+    await chrome.storage.local.set({ never_save_addresses: neverSave });
+  }
+
   async getTimeFormat(): Promise<TimeFormat> {
     const result = await chrome.storage.local.get('time_format');
     return result.time_format === '24h' ? '24h' : '12h';

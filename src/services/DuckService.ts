@@ -77,7 +77,10 @@ export class DuckService {
           return { status: 'error', message: 'No address returned from the server' }
         }
         
-        await this.storage.saveGeneratedAddress(response.address, notes)
+        const neverSave = await this.storage.getNeverSaveAddresses()
+        if (!neverSave) {
+          await this.storage.saveGeneratedAddress(response.address, notes)
+        }
 
         const latestUserData = await this.storage.getUserData()
         if (latestUserData) {
