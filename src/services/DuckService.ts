@@ -221,6 +221,7 @@ export class DuckService {
   async saveReverseAlias(recipientEmail: string, alias: string, notes?: string): Promise<boolean> {
     try {
       if (!recipientEmail) return false
+      if (await this.storage.getNeverSaveAddresses()) return true
       await this.storage.saveReverseAlias(recipientEmail, alias, notes)
       return true
     } catch (error: unknown) {

@@ -196,6 +196,24 @@ export const GenerateButton = styled(PrimaryButton)`
   margin-bottom: 24px;
 `
 
+export const HistoryNotice = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -12px 0 16px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: ${props => props.theme.textSecondary};
+  background: ${props => props.theme.surfaceElevated};
+  border: 1px solid ${props => props.theme.borderLight};
+  border-radius: 8px;
+
+  svg {
+    flex-shrink: 0;
+    color: ${props => props.theme.primary};
+  }
+`
+
 export const ReverseAliasSection = styled.div`
   margin-bottom: 24px;
   padding: 14px;

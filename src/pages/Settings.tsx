@@ -11,6 +11,7 @@ import { BackupSummary, TimeFormat } from "../types";
 import { PermissionToggle } from "../components/PermissionToggle";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Section, SectionHeader, BackButton } from "../styles/SharedStyles";
+import { ToggleContainer, ToggleHeader, ToggleTitle, ToggleSwitch, ToggleInput, ToggleSlider, ToggleDescription } from "../styles/ui.styles";
 import {
   SettingsContainer,
   SyncToggleSwitch,
@@ -574,18 +575,6 @@ export const Settings = ({ onBack }: SettingsProps) => {
           </SyncToggleSwitch>
           24-hour time
         </SyncOptionRow>
-        <SyncOptionRow>
-          <SyncToggleSwitch>
-            <SyncToggleInput
-              type="checkbox"
-              checked={neverSaveAddresses}
-              onChange={(e) => handleNeverSaveAddressesChange(e.target.checked)}
-            />
-            <SyncToggleSlider />
-          </SyncToggleSwitch>
-          Never save generated addresses
-          <SyncOptionHint>(history disabled)</SyncOptionHint>
-        </SyncOptionRow>
       </Section>
 
       <Section>
@@ -604,6 +593,22 @@ export const Settings = ({ onBack }: SettingsProps) => {
             disabled={permission === 'contextMenuFeatures' && contextMenusUnsupportedOnPlatform}
           />
         ))}
+        <ToggleContainer>
+          <ToggleHeader>
+            <ToggleTitle>History</ToggleTitle>
+            <ToggleSwitch>
+              <ToggleInput
+                type="checkbox"
+                checked={!neverSaveAddresses}
+                onChange={(e) => handleNeverSaveAddressesChange(!e.target.checked)}
+              />
+              <ToggleSlider />
+            </ToggleSwitch>
+          </ToggleHeader>
+          <ToggleDescription>
+            Keep a list of the addresses you generate and the recipients you convert. Turn this off and new ones are only copied to the clipboard, nothing is stored.
+          </ToggleDescription>
+        </ToggleContainer>
       </Section>
 
       <Section>

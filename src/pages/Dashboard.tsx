@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { MdInfo, MdOpenInNew, MdKeyboardArrowDown, MdClose, MdCheck, MdHistoryToggleOff } from "react-icons/md";
+import { MdInfo, MdOpenInNew, MdKeyboardArrowDown, MdClose, MdCheck } from "react-icons/md";
 import { useApp } from "../context/AppContext";
 import { DuckService } from "../services/DuckService";
 import { StorageService } from "../services/StorageService";
@@ -9,11 +9,10 @@ import { useNotification } from "../components/Notification";
 import { ItemListSection, ListItem, ListConfig } from "../components/AddressListSection";
 import { DashboardTabs } from "../components/DashboardTabs";
 import { DialogOverlay } from "../styles/ui.styles";
-import { Section, SectionHeader } from "../styles/SharedStyles";
-import { EmptyState } from "../styles/AddressListSection.styles";
 import {
   DashboardContainer,
   GenerateButton,
+  HistoryNotice,
   ReverseAliasSection,
   ReverseAliasSteps,
   ReverseAliasInputRow,
@@ -238,20 +237,22 @@ export const Dashboard = () => {
 
     await duckService.saveReverseAlias(email, alias);
 
-    setReverseAliases(prev => {
-      const existingIndex = prev.findIndex(a => a.recipientEmail === email);
-      if (existingIndex !== -1) {
-        const item = { ...prev[existingIndex], alias, timestamp: Date.now() };
-        return [item, ...prev.filter((_, i) => i !== existingIndex)];
-      }
-      return [{
-        recipientEmail: email,
-        alias,
-        timestamp: Date.now(),
-        notes: '',
-        username: senderLocal
-      }, ...prev];
-    });
+    if (!neverSaveAddresses) {
+      setReverseAliases(prev => {
+        const existingIndex = prev.findIndex(a => a.recipientEmail === email);
+        if (existingIndex !== -1) {
+          const item = { ...prev[existingIndex], alias, timestamp: Date.now() };
+          return [item, ...prev.filter((_, i) => i !== existingIndex)];
+        }
+        return [{
+          recipientEmail: email,
+          alias,
+          timestamp: Date.now(),
+          notes: '',
+          username: senderLocal
+        }, ...prev];
+      });
+    }
 
     try { await navigator.clipboard.writeText(alias); } catch {}
     const nativeEvent = event && 'clientX' in event.nativeEvent ? event.nativeEvent as MouseEvent : undefined;
@@ -337,32 +338,25 @@ export const Dashboard = () => {
           <GenerateButton onClick={generateNewAddress} disabled={loading}>
             {loading ? "Generating..." : "Generate new address"}
           </GenerateButton>
-          {neverSaveAddresses ? (
-            <Section>
-              <SectionHeader>
-                <h2>Generated addresses</h2>
-              </SectionHeader>
-              <EmptyState>
-                <MdHistoryToggleOff />
-                <h3>History is disabled</h3>
-                <p>Generated addresses are not being saved. You can change this in Settings.</p>
-              </EmptyState>
-            </Section>
-          ) : (
-            <ItemListSection
-              items={addressItems}
-              config={GENERATE_LIST_CONFIG}
-              copyToClipboard={copyToClipboard}
-              formatTime={formatTime}
-              onUpdateNotes={handleUpdateAddressNotes}
-              onDeleteItem={handleDeleteAddress}
-              onClearAll={handleClearAllAddresses}
-              autoEditKey={autoEditAddress}
-              onAutoEditComplete={() => setAutoEditAddress(null)}
-              onUpdateTags={handleUpdateAddressTags}
-              allTags={allTags}
-            />
+          {neverSaveAddresses && (
+            <HistoryNotice>
+              <MdInfo size={14} />
+              New addresses are copied but not saved
+            </HistoryNotice>
           )}
+          <ItemListSection
+            items={addressItems}
+            config={GENERATE_LIST_CONFIG}
+            copyToClipboard={copyToClipboard}
+            formatTime={formatTime}
+            onUpdateNotes={handleUpdateAddressNotes}
+            onDeleteItem={handleDeleteAddress}
+            onClearAll={handleClearAllAddresses}
+            autoEditKey={autoEditAddress}
+            onAutoEditComplete={() => setAutoEditAddress(null)}
+            onUpdateTags={handleUpdateAddressTags}
+            allTags={allTags}
+          />
         </>
       )}
 
@@ -417,6 +411,13 @@ export const Dashboard = () => {
               </ReverseAliasConvertButton>
             </ReverseAliasInputRow>
           </ReverseAliasSection>
+
+          {neverSaveAddresses && (
+            <HistoryNotice>
+              <MdInfo size={14} />
+              Send addresses are copied but not saved
+            </HistoryNotice>
+          )}
 
           {showAliasPicker && (
             <DialogOverlay onClick={(e) => { if (e.target === e.currentTarget) { setShowAliasPicker(false); setPickerSearch(''); } }}>
