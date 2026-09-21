@@ -414,11 +414,6 @@ api.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 const GENERATING_MESSAGE = 'Generating duck address...'
 
-/**
- * Generating an address needs a network round trip that can take a few
- * seconds. Put the content script and a spinner on the page before waiting on
- * it, otherwise the shortcut looks like it did nothing at all.
- */
 const showPending = async (tabId: number, message: string): Promise<void> => {
   try {
     await api.scripting.executeScript({

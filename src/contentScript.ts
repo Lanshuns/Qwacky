@@ -12,8 +12,6 @@ const setupConnection = () => {
   }
 }
 
-// Only one notification is on screen at a time, so a result can replace the
-// pending spinner instead of stacking underneath it.
 let activeNotification: HTMLElement | null = null
 let dismissTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -37,7 +35,6 @@ const createSpinner = () => {
     border: '2px solid rgba(255, 255, 255, 0.35)',
     borderTopColor: '#fff'
   })
-  // Animated here rather than with a stylesheet so nothing leaks into the page.
   spinner.animate(
     [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }],
     { duration: 700, iterations: Infinity }
@@ -45,8 +42,6 @@ const createSpinner = () => {
   return spinner
 }
 
-// A pending notification waits for its result, but never hangs around forever
-// if the background page dies before sending one.
 const PENDING_TIMEOUT_MS = 20000
 const DISMISS_TIMEOUT_MS = 3000
 
