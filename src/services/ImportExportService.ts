@@ -1,4 +1,5 @@
 import { StorageService } from './StorageService';
+import { SyncService } from './SyncService';
 import { QwackyBackup, BackupSummary } from '../types';
 
 interface Address {
@@ -37,9 +38,29 @@ export interface ImportAddressesResult {
 
 export class ImportExportService {
   private storage: StorageService;
+  private sync: SyncService;
 
   constructor() {
     this.storage = new StorageService();
+    this.sync = new SyncService();
+  }
+
+  private async persistAddresses(username: string, addresses: any[]): Promise<void> {
+    await chrome.storage.local.set({ [`addresses_${username}`]: addresses });
+    try {
+      await this.sync.saveAddressesToSync(username, addresses);
+    } catch (error) {
+      console.error('Sync error (non-fatal):', error);
+    }
+  }
+
+  private async persistReverseAliases(username: string, aliases: any[]): Promise<void> {
+    await chrome.storage.local.set({ [`reverse_aliases_${username}`]: aliases });
+    try {
+      await this.sync.saveReverseAliasesToSync(username, aliases);
+    } catch (error) {
+      console.error('Sync error (non-fatal):', error);
+    }
   }
 
   async importAddresses(data: string): Promise<ImportAddressesResult> {
@@ -144,8 +165,7 @@ export class ImportExportService {
 
         const mergedAddresses = [...newAddressesWithUsername, ...currentAddresses];
 
-        const accountKey = `addresses_${username}`;
-        await chrome.storage.local.set({ [accountKey]: mergedAddresses });
+        await this.persistAddresses(username, mergedAddresses);
 
         const globalResult = await chrome.storage.local.get('generated_addresses');
         const globalAddresses = globalResult.generated_addresses || [];
@@ -329,17 +349,13 @@ export class ImportExportService {
           const existingAddresses: any[] = existingAddrResult[`addresses_${username}`] || [];
           const existingAddrMap = new Map(existingAddresses.map(a => [a.value, true]));
           const newAddresses = importAddresses.filter(a => !existingAddrMap.has(a.value));
-          await chrome.storage.local.set({
-            [`addresses_${username}`]: [...newAddresses, ...existingAddresses]
-          });
+          await this.persistAddresses(username, [...newAddresses, ...existingAddresses]);
 
           const existingAliasResult = await chrome.storage.local.get(`reverse_aliases_${username}`);
           const existingAliases: any[] = existingAliasResult[`reverse_aliases_${username}`] || [];
           const existingAliasMap = new Map(existingAliases.map(a => [a.recipientEmail, true]));
           const newAliases = importAliases.filter(a => !existingAliasMap.has(a.recipientEmail));
-          await chrome.storage.local.set({
-            [`reverse_aliases_${username}`]: [...newAliases, ...existingAliases]
-          });
+          await this.persistReverseAliases(username, [...newAliases, ...existingAliases]);
 
           accountStats.push({
             username,
@@ -440,7 +456,7 @@ export class ImportExportService {
 
         if (newAddresses.length > 0) {
           const merged = [...newAddresses, ...currentAddresses];
-          await chrome.storage.local.set({ [`addresses_${username}`]: merged });
+          await this.persistAddresses(username, merged);
 
           const globalResult = await chrome.storage.local.get('generated_addresses');
           const globalAddresses = globalResult.generated_addresses || [];
@@ -469,7 +485,7 @@ export class ImportExportService {
 
         if (newAliases.length > 0) {
           const merged = [...newAliases, ...currentAliases];
-          await chrome.storage.local.set({ [`reverse_aliases_${username}`]: merged });
+          await this.persistReverseAliases(username, merged);
           newAliasCount = newAliases.length;
         }
       }
