@@ -104,8 +104,14 @@ export class AuthService {
         }
       )
       
+      if (response.status === 401 || response.status === 403) {
+        return { status: 'error', message: 'Session expired. Please log in again.' }
+      }
+      if (response.status === 429) {
+        return { status: 'error', message: 'Rate limited by DuckDuckGo. Try again later.' }
+      }
       if (!response.ok) {
-        throw new Error('Failed to generate address')
+        return { status: 'error', message: `DuckDuckGo returned error ${response.status}` }
       }
       
       let data;

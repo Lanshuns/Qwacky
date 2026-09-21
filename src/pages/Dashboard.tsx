@@ -171,6 +171,8 @@ export const Dashboard = () => {
           setAutoEditAddress(response.address);
         }
         copyToClipboard(response.address + "@duck.com");
+      } else {
+        showNotification(response.message || "Failed to generate address");
       }
     } catch (error) {
       console.error("Error generating address:", error);
