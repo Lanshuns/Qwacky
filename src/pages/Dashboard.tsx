@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { MdInfo, MdOpenInNew, MdKeyboardArrowDown, MdClose, MdCheck } from "react-icons/md";
+import { MdInfo, MdOpenInNew, MdKeyboardArrowDown, MdClose, MdCheck, MdHistoryToggleOff } from "react-icons/md";
 import { useApp } from "../context/AppContext";
 import { DuckService } from "../services/DuckService";
 import { StorageService } from "../services/StorageService";
@@ -9,6 +9,8 @@ import { useNotification } from "../components/Notification";
 import { ItemListSection, ListItem, ListConfig } from "../components/AddressListSection";
 import { DashboardTabs } from "../components/DashboardTabs";
 import { DialogOverlay } from "../styles/ui.styles";
+import { Section, SectionHeader } from "../styles/SharedStyles";
+import { EmptyState } from "../styles/AddressListSection.styles";
 import {
   DashboardContainer,
   GenerateButton,
@@ -75,6 +77,7 @@ export const Dashboard = () => {
   const [selectedSender, setSelectedSender] = useState<string | null>(null);
   const [showAliasPicker, setShowAliasPicker] = useState(false);
   const [pickerSearch, setPickerSearch] = useState("");
+  const [neverSaveAddresses, setNeverSaveAddresses] = useState(false);
   const duckService = useMemo(() => new DuckService(), []);
   const storageService = useMemo(() => new StorageService(), []);
   const [timeFormat, setTimeFormat] = useState<TimeFormat>('12h');
@@ -95,7 +98,18 @@ export const Dashboard = () => {
 
   useEffect(() => {
     storageService.getTimeFormat().then(setTimeFormat);
+    storageService.getNeverSaveAddresses().then(setNeverSaveAddresses);
   }, [storageService]);
+
+  useEffect(() => {
+    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
+      if (areaName === 'local' && changes.never_save_addresses) {
+        setNeverSaveAddresses(!!changes.never_save_addresses.newValue);
+      }
+    };
+    chrome.storage.onChanged.addListener(handleStorageChange);
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange);
+  }, []);
 
   useEffect(() => {
     if (userData) {
@@ -148,14 +162,16 @@ export const Dashboard = () => {
       const response = await duckService.generateAddress();
 
       if (response.status === "success" && response.address) {
-        const newAddress = {
-          value: response.address,
-          timestamp: Date.now(),
-          notes: ''
-        };
-        setAddresses([newAddress, ...addresses]);
+        if (!neverSaveAddresses) {
+          const newAddress = {
+            value: response.address,
+            timestamp: Date.now(),
+            notes: ''
+          };
+          setAddresses([newAddress, ...addresses]);
+          setAutoEditAddress(response.address);
+        }
         copyToClipboard(response.address + "@duck.com");
-        setAutoEditAddress(response.address);
       }
     } catch (error) {
       console.error("Error generating address:", error);
@@ -321,19 +337,32 @@ export const Dashboard = () => {
           <GenerateButton onClick={generateNewAddress} disabled={loading}>
             {loading ? "Generating..." : "Generate new address"}
           </GenerateButton>
-          <ItemListSection
-            items={addressItems}
-            config={GENERATE_LIST_CONFIG}
-            copyToClipboard={copyToClipboard}
-            formatTime={formatTime}
-            onUpdateNotes={handleUpdateAddressNotes}
-            onDeleteItem={handleDeleteAddress}
-            onClearAll={handleClearAllAddresses}
-            autoEditKey={autoEditAddress}
-            onAutoEditComplete={() => setAutoEditAddress(null)}
-            onUpdateTags={handleUpdateAddressTags}
-            allTags={allTags}
-          />
+          {neverSaveAddresses ? (
+            <Section>
+              <SectionHeader>
+                <h2>Generated addresses</h2>
+              </SectionHeader>
+              <EmptyState>
+                <MdHistoryToggleOff />
+                <h3>History is disabled</h3>
+                <p>Generated addresses are not being saved. You can change this in Settings.</p>
+              </EmptyState>
+            </Section>
+          ) : (
+            <ItemListSection
+              items={addressItems}
+              config={GENERATE_LIST_CONFIG}
+              copyToClipboard={copyToClipboard}
+              formatTime={formatTime}
+              onUpdateNotes={handleUpdateAddressNotes}
+              onDeleteItem={handleDeleteAddress}
+              onClearAll={handleClearAllAddresses}
+              autoEditKey={autoEditAddress}
+              onAutoEditComplete={() => setAutoEditAddress(null)}
+              onUpdateTags={handleUpdateAddressTags}
+              allTags={allTags}
+            />
+          )}
         </>
       )}
 

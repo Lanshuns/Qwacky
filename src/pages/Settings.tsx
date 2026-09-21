@@ -87,6 +87,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
   const storageService = useMemo(() => new StorageService(), []);
   const syncService = useMemo(() => new SyncService(), []);
   const [timeFormat, setTimeFormat] = useState<TimeFormat>('12h');
+  const [neverSaveAddresses, setNeverSaveAddresses] = useState(false);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [syncOptions, setSyncOptions] = useState<SyncOptions>({ enabled: false, addresses: true, reverseAliases: true, session: false, syncAccounts: [] });
   const [includeSession, setIncludeSession] = useState(false);
@@ -111,12 +112,18 @@ export const Settings = ({ onBack }: SettingsProps) => {
 
   useEffect(() => {
     storageService.getTimeFormat().then(setTimeFormat);
+    storageService.getNeverSaveAddresses().then(setNeverSaveAddresses);
   }, [storageService]);
 
   const handleTimeFormatChange = async (use24h: boolean) => {
     const format: TimeFormat = use24h ? '24h' : '12h';
     setTimeFormat(format);
     await storageService.setTimeFormat(format);
+  };
+
+  const handleNeverSaveAddressesChange = async (enabled: boolean) => {
+    setNeverSaveAddresses(enabled);
+    await storageService.setNeverSaveAddresses(enabled);
   };
 
   useEffect(() => {
@@ -566,6 +573,18 @@ export const Settings = ({ onBack }: SettingsProps) => {
             <SyncToggleSlider />
           </SyncToggleSwitch>
           24-hour time
+        </SyncOptionRow>
+        <SyncOptionRow>
+          <SyncToggleSwitch>
+            <SyncToggleInput
+              type="checkbox"
+              checked={neverSaveAddresses}
+              onChange={(e) => handleNeverSaveAddressesChange(e.target.checked)}
+            />
+            <SyncToggleSlider />
+          </SyncToggleSwitch>
+          Never save generated addresses
+          <SyncOptionHint>(history disabled)</SyncOptionHint>
         </SyncOptionRow>
       </Section>
 
