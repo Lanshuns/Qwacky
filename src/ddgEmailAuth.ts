@@ -6,6 +6,7 @@ interface DeviceUserData {
   userName: string;
   token: string;
   cohort: string;
+  nextAlias?: string;
 }
 
 const ANNOUNCE_DELAYS_MS = [0, 300, 1000];
@@ -20,6 +21,24 @@ const postDeviceSignedIn = (userData: DeviceUserData) => {
   }, window.location.origin);
 };
 
+const latestAlias = (userName: string, cb: (alias: string | undefined) => void) => {
+  const key = `addresses_${userName}`;
+  chrome.storage.local.get(key, (result) => {
+    if (chrome.runtime.lastError) { cb(undefined); return; }
+    const value = result[key]?.[0]?.value;
+    cb(typeof value === 'string' && value ? value : undefined);
+  });
+};
+
+const signDeviceIn = (userData: DeviceUserData, delays: number[]) => {
+  latestAlias(userData.userName, (nextAlias) => {
+    const payload: DeviceUserData = nextAlias ? { ...userData, nextAlias } : userData;
+    delays.forEach(delay => {
+      setTimeout(() => postDeviceSignedIn(payload), delay);
+    });
+  });
+};
+
 const announceStoredCredentials = () => {
   if (!isContextValid()) return;
 
@@ -29,15 +48,11 @@ const announceStoredCredentials = () => {
     const userData = result.user_data;
     if (!userData?.user?.access_token || !userData?.user?.username) return;
 
-    const payload: DeviceUserData = {
+    signDeviceIn({
       userName: userData.user.username,
       token: userData.user.access_token,
       cohort: userData.user.cohort || ''
-    };
-
-    ANNOUNCE_DELAYS_MS.forEach(delay => {
-      setTimeout(() => postDeviceSignedIn(payload), delay);
-    });
+    }, ANNOUNCE_DELAYS_MS);
   });
 };
 
@@ -53,11 +68,11 @@ window.addEventListener('message', (event) => {
   if (addUserData) {
     if (!addUserData.userName || !addUserData.token) return;
 
-    postDeviceSignedIn({
+    signDeviceIn({
       userName: addUserData.userName,
       token: addUserData.token,
       cohort: addUserData.cohort || ''
-    });
+    }, [0]);
     return;
   }
 
