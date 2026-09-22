@@ -6,10 +6,10 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "qwacky@local-v1.0.1",
-      "strict_min_version": "112.0"
+      "strict_min_version": "128.0"
     },
     "gecko_android": {
-      "strict_min_version": "112.0"
+      "strict_min_version": "128.0"
     }
   },
   "icons": {
