@@ -3,13 +3,13 @@ import styled from 'styled-components'
 export const TabsContainer = styled.div`
   display: flex;
   gap: 0;
-  margin-bottom: 20px;
+  margin-bottom: var(--qw-tabs-mb, 20px);
   border-bottom: 1px solid ${props => props.theme.borderLight};
 `
 
 export const Tab = styled.button<{ active?: boolean }>`
   flex: 1;
-  padding: 10px 16px;
+  padding: var(--qw-tab-pad, 10px 16px);
   background: none;
   border: none;
   border-bottom: 2px solid ${props => props.active ? props.theme.primary : 'transparent'};

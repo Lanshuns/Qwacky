@@ -5,7 +5,7 @@ export const HeaderContainer = styled.header`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
+  padding: var(--qw-header-pad, 14px 16px);
   position: relative;
 
   &::after {
@@ -76,20 +76,6 @@ export const DropdownContent = styled.div<{ isOpen: boolean }>`
   background: ${props => props.theme.surfaceElevated};
   box-shadow: ${props => props.theme.shadowLg};
   border: 1px solid ${props => props.theme.border};
-`
-
-export const SubDropdown = styled.div`
-  padding-left: 16px;
-  background-color: ${props => props.theme.surface};
-  border-left: 2px solid ${props => props.theme.primary}30;
-  margin: 4px 0;
-  display: none;
-`
-
-export const AccountsMenuWrapper = styled.div<{ isOpen?: boolean }>`
-  ${SubDropdown} {
-    display: ${props => props.isOpen ? 'block' : 'none'};
-  }
 `
 
 export const DropdownItem = styled.div<{ active?: boolean; current?: boolean; logout?: boolean }>`
@@ -279,4 +265,79 @@ export const NicknameButton = styled.button<{ primary?: boolean }>`
       background: ${props.theme.hover};
     }
   `}
+`
+
+export const Avatar = styled.span<{ color: string; size?: number }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: ${props => props.size || 28}px;
+  height: ${props => props.size || 28}px;
+  border-radius: 50%;
+  font-size: ${props => Math.round((props.size || 28) * 0.46)}px;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  color: ${props => props.color};
+  background: ${props => props.color}22;
+  border: 1.5px solid ${props => props.color}66;
+`
+
+export const AvatarButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: ${props => props.theme.hover};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${props => props.theme.borderFocus};
+    outline-offset: 1px;
+  }
+`
+
+export const ColorRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px 10px;
+`
+
+export const ColorSwatch = styled.button<{ color: string; selected?: boolean }>`
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid ${props => props.selected ? props.theme.text : 'transparent'};
+  background: ${props => props.color};
+  box-shadow: 0 0 0 1px ${props => props.theme.surfaceElevated};
+  cursor: pointer;
+  transition: transform 0.1s ease;
+
+  &:hover {
+    transform: scale(1.15);
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${props => props.theme.borderFocus};
+    outline-offset: 1px;
+  }
+`
+
+export const SectionLabel = styled.div`
+  padding: 8px 16px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: ${props => props.theme.textTertiary};
 `

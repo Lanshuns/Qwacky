@@ -3,11 +3,13 @@ import { MdInfo, MdOpenInNew, MdKeyboardArrowDown, MdClose, MdCheck } from "reac
 import { useApp } from "../context/AppContext";
 import { DuckService } from "../services/DuckService";
 import { StorageService } from "../services/StorageService";
-import { ReverseAlias, TimeFormat } from "../types";
+import { ReverseAlias, TimeFormat, AddressSource } from "../types";
 import { useNotification } from "../components/Notification";
 
 import { ItemListSection, ListItem, ListConfig } from "../components/AddressListSection";
-import { DashboardTabs } from "../components/DashboardTabs";
+import { DashboardTabs, DashboardTab } from "../components/DashboardTabs";
+import { HomeStats } from "../components/HomeStats";
+import { compareTags } from "../utils/tags";
 import { DialogOverlay } from "../styles/ui.styles";
 import {
   DashboardContainer,
@@ -35,13 +37,14 @@ interface StoredAddress {
   timestamp: number;
   notes?: string;
   tags?: string[];
+  source?: AddressSource;
 }
 
 const GENERATE_LIST_CONFIG: ListConfig = {
-  title: "Generated addresses",
+  title: "Address history",
   itemsLabel: "addresses",
   emptyTitle: "No addresses yet",
-  emptySubtitle: "Click the button above to generate your first address",
+  emptySubtitle: "Generate your first address from the Home tab",
   searchPlaceholder: "Search addresses or notes...",
   deleteTitle: "Delete address",
   getDeleteMessage: (key) => `Are you sure you want to delete this address\n(${key}@duck.com)?`,
@@ -51,15 +54,15 @@ const GENERATE_LIST_CONFIG: ListConfig = {
 };
 
 const SEND_LIST_CONFIG: ListConfig = {
-  title: "History",
-  itemsLabel: "aliases",
+  title: "Send history",
+  itemsLabel: "send addresses",
   emptyTitle: "No history yet",
   emptySubtitle: "Convert a recipient email above to get started",
   searchPlaceholder: "Search emails or notes...",
-  deleteTitle: "Delete reverse alias",
-  getDeleteMessage: (key) => `Are you sure you want to delete the reverse alias for\n${key}?`,
+  deleteTitle: "Delete send address",
+  getDeleteMessage: (key) => `Are you sure you want to delete the send address for\n${key}?`,
   clearTitle: "Clear all history",
-  clearMessage: "Are you sure you want to clear all reverse alias history?\n\nThis action cannot be undone.",
+  clearMessage: "Are you sure you want to clear all send history?\n\nThis action cannot be undone.",
   hideStorageKey: "hide_reverse_aliases",
 };
 
@@ -67,9 +70,8 @@ export const Dashboard = () => {
   const { userData, currentAccount } = useApp();
   const [addresses, setAddresses] = useState<StoredAddress[]>([]);
   const [loading, setLoading] = useState(false);
-  const [autoEditAddress, setAutoEditAddress] = useState<string | null>(null);
   const [autoEditAlias, setAutoEditAlias] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'generate' | 'send'>('generate');
+  const [activeTab, setActiveTab] = useState<DashboardTab>('home');
   const [recipientEmail, setRecipientEmail] = useState("");
   const [reverseAliases, setReverseAliases] = useState<ReverseAlias[]>([]);
   const [showInstructions, setShowInstructions] = useState(false);
@@ -77,6 +79,8 @@ export const Dashboard = () => {
   const [showAliasPicker, setShowAliasPicker] = useState(false);
   const [pickerSearch, setPickerSearch] = useState("");
   const [neverSaveAddresses, setNeverSaveAddresses] = useState(false);
+  const [showStats, setShowStats] = useState(true);
+  const [showLatest, setShowLatest] = useState(true);
   const duckService = useMemo(() => new DuckService(), []);
   const storageService = useMemo(() => new StorageService(), []);
   const [timeFormat, setTimeFormat] = useState<TimeFormat>('12h');
@@ -85,8 +89,9 @@ export const Dashboard = () => {
   useEffect(() => {
     chrome.storage.local.get('dashboardActiveTab', (result) => {
       if (chrome.runtime.lastError) return;
-      if (result.dashboardActiveTab === 'generate' || result.dashboardActiveTab === 'send') {
-        setActiveTab(result.dashboardActiveTab);
+      const saved = result.dashboardActiveTab === 'generate' ? 'home' : result.dashboardActiveTab;
+      if (saved === 'home' || saved === 'addresses' || saved === 'send') {
+        setActiveTab(saved);
       }
     });
   }, []);
@@ -98,13 +103,17 @@ export const Dashboard = () => {
   useEffect(() => {
     storageService.getTimeFormat().then(setTimeFormat);
     storageService.getNeverSaveAddresses().then(setNeverSaveAddresses);
+    storageService.getShowStats().then(setShowStats);
+    storageService.getShowLatest().then(setShowLatest);
   }, [storageService]);
 
   useEffect(() => {
     const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
-      if (areaName === 'local' && changes.never_save_addresses) {
-        setNeverSaveAddresses(!!changes.never_save_addresses.newValue);
-      }
+      if (areaName !== 'local') return;
+      if (changes.never_save_addresses) setNeverSaveAddresses(!!changes.never_save_addresses.newValue);
+      if (changes.show_stats) setShowStats(changes.show_stats.newValue !== false);
+      if (changes.show_latest) setShowLatest(changes.show_latest.newValue !== false);
+      if (changes.time_format) setTimeFormat(changes.time_format.newValue === '24h' ? '24h' : '12h');
     };
     chrome.storage.onChanged.addListener(handleStorageChange);
     return () => chrome.storage.onChanged.removeListener(handleStorageChange);
@@ -158,7 +167,7 @@ export const Dashboard = () => {
   const generateNewAddress = async () => {
     setLoading(true);
     try {
-      const response = await duckService.generateAddress();
+      const response = await duckService.generateAddress(undefined, 'popup');
 
       if (response.status === "success" && response.address) {
         if (!neverSaveAddresses) {
@@ -168,7 +177,6 @@ export const Dashboard = () => {
             notes: ''
           };
           setAddresses([newAddress, ...addresses]);
-          setAutoEditAddress(response.address);
         }
         copyToClipboard(response.address + "@duck.com");
       } else {
@@ -299,7 +307,7 @@ export const Dashboard = () => {
     const tagSet = new Set<string>();
     addresses.forEach(addr => (addr.tags || []).forEach(t => tagSet.add(t)));
     reverseAliases.forEach(a => (a.tags || []).forEach(t => tagSet.add(t)));
-    return Array.from(tagSet).sort();
+    return Array.from(tagSet).sort(compareTags);
   }, [addresses, reverseAliases]);
 
   const addressItems: ListItem[] = useMemo(() =>
@@ -321,7 +329,7 @@ export const Dashboard = () => {
       primaryText: a.recipientEmail,
       secondaryText: a.alias,
       copyText: a.alias,
-      copyLabel: `Copy reverse alias for ${a.recipientEmail}`,
+      copyLabel: `Copy send address for ${a.recipientEmail}`,
       timestamp: a.timestamp,
       notes: a.notes,
       tags: a.tags || [],
@@ -335,7 +343,7 @@ export const Dashboard = () => {
     <DashboardContainer>
       <DashboardTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {activeTab === 'generate' && (
+      {activeTab === 'home' && (
         <>
           <GenerateButton onClick={generateNewAddress} disabled={loading}>
             {loading ? "Generating..." : "Generate new address"}
@@ -346,6 +354,20 @@ export const Dashboard = () => {
               New addresses are copied but not saved
             </HistoryNotice>
           )}
+          <HomeStats
+            addresses={addresses}
+            aliases={reverseAliases}
+            accountTotal={userData.stats?.addresses_generated}
+            copyToClipboard={copyToClipboard}
+            formatTime={formatTime}
+            showStats={showStats}
+            showLatest={showLatest}
+          />
+        </>
+      )}
+
+      {activeTab === 'addresses' && (
+        <>
           <ItemListSection
             items={addressItems}
             config={GENERATE_LIST_CONFIG}
@@ -354,8 +376,6 @@ export const Dashboard = () => {
             onUpdateNotes={handleUpdateAddressNotes}
             onDeleteItem={handleDeleteAddress}
             onClearAll={handleClearAllAddresses}
-            autoEditKey={autoEditAddress}
-            onAutoEditComplete={() => setAutoEditAddress(null)}
             onUpdateTags={handleUpdateAddressTags}
             allTags={allTags}
           />
@@ -426,7 +446,7 @@ export const Dashboard = () => {
               <PickerContainer>
                 <PickerHeader>
                   <h3>Send from</h3>
-                  <button aria-label="Close picker" onClick={() => { setShowAliasPicker(false); setPickerSearch(''); }}>
+                  <button aria-label="Close picker" title="Close" onClick={() => { setShowAliasPicker(false); setPickerSearch(''); }}>
                     <MdClose size={20} />
                   </button>
                 </PickerHeader>

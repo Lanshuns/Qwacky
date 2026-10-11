@@ -139,17 +139,22 @@ export const EmptyState = styled.div`
 export const AddressList = styled.div<{ hidden?: boolean }>`
   background: ${props => props.theme.surface};
   border-radius: 8px;
-  padding: 8px;
+  padding: var(--qw-list-pad, 8px);
   border: 1px solid ${props => props.theme.borderLight};
 `
 
 export const IconButton = styled(BaseIconButton)`
+  padding: 4px;
   border-radius: 6px;
+
+  @media (hover: none) {
+    padding: 6px;
+  }
   transition: all 0.15s ease;
 
   svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
   }
 
   &.delete {
@@ -173,8 +178,14 @@ export const IconButton = styled(BaseIconButton)`
 
 export const AddressItem = styled.div`
   border-bottom: 1px solid ${props => props.theme.borderLight};
-  padding: 10px 4px;
+  padding: var(--qw-item-pad, 10px 4px);
   position: relative;
+
+  @media (hover: none) {
+    ${'${AddressHeader}'} {
+      padding-right: 96px;
+    }
+  }
   border-radius: 8px;
   transition: background 0.15s ease;
 
@@ -204,14 +215,20 @@ export const AddressItem = styled.div`
 
 export const AddressMain = styled.div`
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 6px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
 `
 
 export const AddressHeader = styled.div`
+  flex: 1;
+  min-width: 0;
   cursor: pointer;
-  padding: 8px 10px;
+  padding: var(--qw-item-header-pad, 8px 10px);
+
+  @media (hover: none) {
+    padding-right: 96px;
+  }
   border-radius: 8px;
   transition: all 0.15s ease;
 
@@ -223,7 +240,7 @@ export const AddressHeader = styled.div`
 
 export const AddressText = styled.div`
   font-weight: 500;
-  font-size: 14px;
+  font-size: var(--qw-text-size, 14px);
   word-break: break-all;
   color: ${props => props.theme.text};
 `
@@ -233,14 +250,14 @@ export const AddressTime = styled.div`
   font-size: 12px;
   font-weight: 400;
   padding-left: 10px;
-  margin-top: 2px;
+  margin-top: var(--qw-time-mt, 2px);
 `
 
 export const NotesContainer = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 8px 4px 8px;
+  padding: var(--qw-notes-pad, 6px 8px 2px);
   font-size: 14px;
 `
 
@@ -248,15 +265,8 @@ export const Notes = styled.div`
   color: ${props => props.theme.textSecondary};
   flex: 1;
   word-wrap: break-word;
-  font-size: 14px;
+  font-size: var(--qw-notes-size, 13px);
   line-height: 1.4;
-`
-
-export const EmptyNotes = styled.div`
-  color: ${props => props.theme.textTertiary};
-  font-style: italic;
-  flex: 1;
-  font-size: 13px;
 `
 
 export const NotesEditContainer = styled.div`
@@ -287,8 +297,13 @@ export const NotesActions = styled.div`
 `
 
 export const ButtonsContainer = styled.div`
+  position: absolute;
+  top: var(--qw-item-pad-top, 8px);
+  right: 8px;
   display: flex;
-  gap: 4px;
+  gap: 2px;
+  background: ${props => props.theme.surface};
+  border-radius: 6px;
 `
 
 export const ItemSubtext = styled.div`
@@ -301,20 +316,10 @@ export const ItemSubtext = styled.div`
 
 export const TagFilterRow = styled.div`
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 12px;
-  overflow-x: auto;
-  padding-bottom: 4px;
   align-items: center;
-
-  &::-webkit-scrollbar {
-    height: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: ${props => props.theme.border};
-    border-radius: 2px;
-  }
 `
 
 export const TagFilterChip = styled.button<{ active?: boolean }>`
@@ -392,7 +397,7 @@ export const TagChipContainer = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  padding: 4px 8px;
+  padding: var(--qw-tags-pad, 4px 8px);
 `
 
 export const TagChip = styled.span`

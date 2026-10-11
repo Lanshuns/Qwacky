@@ -215,7 +215,7 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
       <NoticeParagraph>To enable this feature, Chrome will show a permission request once. After clicking 'Done', a permissions dialog may appear.</NoticeParagraph>
       <NoticeParagraph>If you see a permissions dialog, click 'Allow' then return to the extension and toggle the feature again.</NoticeParagraph>
       <NoticeParagraph>For more details, see: <LinkText
-          href="https://github.com/Lanshuns/Qwacky?tab=readme-ov-file#browser-specific-permission-handling-and-limitations"
+          href="https://github.com/Lanshuns/Qwacky/blob/main/PRIVACY.md#permissions"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -228,6 +228,15 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
   return (
     <ToggleContainer disabled={disabled && !isRequired}>
       <ToggleHeader>
+        <ToggleSwitch>
+          <ToggleInput
+            type="checkbox"
+            checked={isEnabled}
+            onChange={e => handleToggle(e.target.checked)}
+            disabled={disabled || isRequired}
+          />
+          <ToggleSlider />
+        </ToggleSwitch>
         <ToggleTitle>
           {name}
           {!isFirefox && name === "Autofill" && (
@@ -247,7 +256,7 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
               >
                 Browser additional permissions request will only appear once if not already granted.{' '}
                 <LinkText
-                  href="https://github.com/Lanshuns/Qwacky?tab=readme-ov-file#browser-specific-permission-handling-and-limitations"
+                  href="https://github.com/Lanshuns/Qwacky/blob/main/PRIVACY.md#permissions"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -257,15 +266,6 @@ export const PermissionToggle: React.FC<PermissionToggleProps> = ({
             </InfoIconContainer>
           )}
         </ToggleTitle>
-        <ToggleSwitch>
-          <ToggleInput
-            type="checkbox"
-            checked={isEnabled}
-            onChange={e => handleToggle(e.target.checked)}
-            disabled={disabled || isRequired}
-          />
-          <ToggleSlider />
-        </ToggleSwitch>
       </ToggleHeader>
       <ToggleDescription>
         <Markdown>{description}</Markdown>

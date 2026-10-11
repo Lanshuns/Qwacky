@@ -17,6 +17,8 @@ interface AppContextType {
   darkMode: boolean;
   setThemeMode: (mode: ThemeMode) => void;
   toggleDarkMode: () => void;
+  compactMode: boolean;
+  setCompactMode: (enabled: boolean) => void;
   userData: UserData | null;
   setUserData: (data: UserData | null) => void;
   logout: () => Promise<void>;
@@ -70,6 +72,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('themeMode', JSON.stringify(themeMode))
     chrome.storage.local.set({ themeMode })
   }, [themeMode])
+
+  const [compactMode, setCompactModeState] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('compactMode') === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    chrome.storage.local.get('compact_mode', (result) => {
+      if (chrome.runtime.lastError) return
+      setCompactModeState(result.compact_mode === true)
+    })
+    const onChange = (changes: { [key: string]: chrome.storage.StorageChange }, area: string) => {
+      if (area === 'local' && changes.compact_mode) setCompactModeState(changes.compact_mode.newValue === true)
+    }
+    chrome.storage.onChanged.addListener(onChange)
+    return () => chrome.storage.onChanged.removeListener(onChange)
+  }, [])
+
+  const setCompactMode = (enabled: boolean) => {
+    setCompactModeState(enabled)
+    try { localStorage.setItem('compactMode', String(enabled)) } catch {}
+    chrome.storage.local.set({ compact_mode: enabled })
+  }
 
   useEffect(() => {
     const loadAccounts = async () => {
@@ -328,6 +356,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       darkMode, 
       setThemeMode, 
       toggleDarkMode, 
+      compactMode,
+      setCompactMode,
       userData, 
       setUserData, 
       logout,

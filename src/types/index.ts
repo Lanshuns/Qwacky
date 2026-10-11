@@ -1,5 +1,7 @@
 export type TimeFormat = '12h' | '24h';
 
+export type AddressSource = 'popup' | 'menu' | 'shortcut' | 'import';
+
 export interface UserData {
   user: {
     email: string;
@@ -66,6 +68,7 @@ export interface QwackyBackup {
     timestamp: number;
     notes?: string;
     tags?: string[];
+    source?: AddressSource;
   }>;
   reverseAliases: Array<{
     recipientEmail: string;

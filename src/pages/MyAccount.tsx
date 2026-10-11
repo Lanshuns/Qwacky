@@ -56,7 +56,7 @@ export const MyAccount = ({ onBack }: MyAccountProps) => {
   const accountLabel = currentAccount ? `${currentAccount}@duck.com` : 'this account'
   const addressText = `${counts.addresses} saved address${counts.addresses === 1 ? '' : 'es'}`
   const removedParts = counts.aliases > 0
-    ? `${addressText} and ${counts.aliases} reverse alias${counts.aliases === 1 ? '' : 'es'}`
+    ? `${addressText} and ${counts.aliases} send address${counts.aliases === 1 ? '' : 'es'}`
     : addressText
 
   return (

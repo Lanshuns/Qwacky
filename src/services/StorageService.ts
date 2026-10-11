@@ -1,4 +1,4 @@
-import { UserData, ReverseAlias, TimeFormat } from '../types';
+import { UserData, ReverseAlias, TimeFormat, AddressSource } from '../types';
 import { SyncService } from './SyncService';
 
 interface Address {
@@ -8,6 +8,7 @@ interface Address {
   notes?: string;
   tags?: string[];
   username?: string;
+  source?: AddressSource;
 }
 
 export class StorageService {
@@ -34,19 +35,20 @@ export class StorageService {
     return userData?.user?.username || null;
   }
 
-  async saveGeneratedAddress(address: string, notes?: string): Promise<void> {
+  async saveGeneratedAddress(address: string, notes?: string, source?: AddressSource): Promise<void> {
     try {
       const username = await this.getCurrentUsername();
       if (!username) {
         throw new Error('User data not found');
       }
 
-      const newAddress = {
+      const newAddress: Address = {
         value: address,
         timestamp: Date.now(),
         lastModified: Date.now(),
         notes: notes || '',
-        username: username
+        username: username,
+        source: source || 'popup'
       };
 
       const accountKey = `addresses_${username}`;
@@ -434,6 +436,24 @@ export class StorageService {
 
   async setHideGeneratedAddresses(hide: boolean): Promise<void> {
     await chrome.storage.local.set({ hide_generated_addresses: hide });
+  }
+
+  async getShowLatest(): Promise<boolean> {
+    const result = await chrome.storage.local.get('show_latest');
+    return result.show_latest !== false;
+  }
+
+  async setShowLatest(enabled: boolean): Promise<void> {
+    await chrome.storage.local.set({ show_latest: enabled });
+  }
+
+  async getShowStats(): Promise<boolean> {
+    const result = await chrome.storage.local.get('show_stats');
+    return result.show_stats !== false;
+  }
+
+  async setShowStats(enabled: boolean): Promise<void> {
+    await chrome.storage.local.set({ show_stats: enabled });
   }
 
   async getNeverSaveAddresses(): Promise<boolean> {

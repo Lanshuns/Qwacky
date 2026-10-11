@@ -487,7 +487,7 @@ if (api.contextMenus) {
           } catch {}
         }
 
-        const pending = duckService.generateAddress(domain || undefined)
+        const pending = duckService.generateAddress(domain || undefined, 'menu')
         await showPending(tab.id, GENERATING_MESSAGE)
         const response = await pending
 
@@ -560,7 +560,7 @@ if (api.commands) {
         } catch {}
       }
 
-      const pending = duckService.generateAddress(domain || undefined)
+      const pending = duckService.generateAddress(domain || undefined, 'shortcut')
       await showPending(activeTab.id, GENERATING_MESSAGE)
       const response = await pending
 

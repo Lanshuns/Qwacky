@@ -139,7 +139,7 @@ export const ToggleContainer = styled.div<{ disabled?: boolean }>`
 export const ToggleHeader = styled.div`
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
   margin-bottom: 8px;
 `
 
@@ -157,7 +157,7 @@ export const ToggleSwitch = styled.label`
   display: inline-block;
   width: 48px;
   height: 24px;
-  margin-left: 12px;
+  flex-shrink: 0;
 `
 
 export const ToggleInput = styled.input`

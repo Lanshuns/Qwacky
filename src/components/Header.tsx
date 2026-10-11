@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { MdLogout, MdSettings, MdMenu, MdAccountCircle, MdPersonAdd, MdNewReleases, MdSwapHoriz, MdKeyboardArrowDown, MdEdit, MdCheck, MdClose, MdFavorite, MdInfoOutline, MdManageAccounts, MdOpenInNew } from 'react-icons/md'
+import { MdLogout, MdSettings, MdMenu, MdPersonAdd, MdNewReleases, MdEdit, MdCheck, MdClose, MdFavorite, MdInfoOutline, MdManageAccounts, MdOpenInNew } from 'react-icons/md'
 import { useApp } from '../context/AppContext'
 import { ConfirmDialog } from './ConfirmDialog'
 import {
@@ -11,8 +11,6 @@ import {
   IconButton,
   MenuDropdown,
   DropdownContent,
-  SubDropdown,
-  AccountsMenuWrapper,
   DropdownItem,
   DropdownDivider,
   AccountItem,
@@ -23,8 +21,25 @@ import {
   NicknameDialogSubtitle,
   NicknameInput,
   NicknameDialogActions,
-  NicknameButton
+  NicknameButton,
+  Avatar,
+  AvatarButton,
+  ColorRow,
+  ColorSwatch,
+  SectionLabel
 } from '../styles/Header.styles'
+
+const ACCOUNT_COLORS: Record<string, string> = {
+  orange: '#ff9f19',
+  blue: '#3b82f6',
+  green: '#22a06b',
+  purple: '#8b5cf6',
+  pink: '#ec4899',
+  teal: '#14b8a6',
+  red: '#ef4444',
+  slate: '#8a94a6'
+}
+const DEFAULT_COLOR = 'orange'
 
 interface HeaderProps {
   onSettingsClick?: () => void;
@@ -37,12 +52,14 @@ interface HeaderProps {
 export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, onAboutClick, onMyAccountClick }: HeaderProps) => {
   const { userData, logout, accounts, currentAccount, switchAccount } = useApp()
   const [menuDropdownOpen, setMenuDropdownOpen] = useState(false)
+  const [accountDropdownOpen, setAccountDropdownOpen] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
-  const [accountsListOpen, setAccountsListOpen] = useState(false)
   const [showNicknameDialog, setShowNicknameDialog] = useState(false)
   const [nickname, setNickname] = useState('')
   const [accountNicknames, setAccountNicknames] = useState<Record<string, string>>({})
+  const [accountColors, setAccountColors] = useState<Record<string, string>>({})
   const menuDropdownRef = useRef<HTMLDivElement>(null)
+  const accountDropdownRef = useRef<HTMLDivElement>(null)
 
   const isPopout = window.location.search.includes('popout=1')
 
@@ -56,7 +73,7 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
 
   const handleLogoutClick = () => {
     setShowLogoutConfirm(true)
-    setMenuDropdownOpen(false)
+    setAccountDropdownOpen(false)
   }
 
   const handleLogoutConfirm = async () => {
@@ -66,7 +83,23 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
 
   const handleSwitchAccount = (username: string) => {
     switchAccount(username)
-    setMenuDropdownOpen(false)
+    setAccountDropdownOpen(false)
+  }
+
+  const handleAccountItemClick = (handler?: () => void) => {
+    if (handler) {
+      handler()
+      setAccountDropdownOpen(false)
+    }
+  }
+
+  const colorOf = (username: string) => ACCOUNT_COLORS[accountColors[username]] || ACCOUNT_COLORS[DEFAULT_COLOR]
+
+  const handlePickColor = async (colorKey: string) => {
+    if (!currentAccount) return
+    const updated = { ...accountColors, [currentAccount]: colorKey }
+    setAccountColors(updated)
+    await chrome.storage.local.set({ accountColors: updated })
   }
 
   const handleMenuItemClick = (handler?: () => void) => {
@@ -81,7 +114,7 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
     if (currentAccount) {
       setNickname(accountNicknames[currentAccount] || '')
       setShowNicknameDialog(true)
-      setMenuDropdownOpen(false)
+      setAccountDropdownOpen(false)
     }
   }
 
@@ -110,19 +143,25 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
   }
 
   useEffect(() => {
-    const loadNicknames = async () => {
-      const result = await chrome.storage.local.get('accountNicknames')
+    const loadAccountMeta = async () => {
+      const result = await chrome.storage.local.get(['accountNicknames', 'accountColors'])
       if (result.accountNicknames) {
         setAccountNicknames(result.accountNicknames)
       }
+      if (result.accountColors) {
+        setAccountColors(result.accountColors)
+      }
     }
-    loadNicknames()
+    loadAccountMeta()
   }, [])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuDropdownRef.current && !menuDropdownRef.current.contains(event.target as Node)) {
         setMenuDropdownOpen(false)
+      }
+      if (accountDropdownRef.current && !accountDropdownRef.current.contains(event.target as Node)) {
+        setAccountDropdownOpen(false)
       }
     }
 
@@ -135,78 +174,95 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
   return (
     <>
       <HeaderContainer>
-        <TitleSection onClick={openRepo}>
+        <TitleSection onClick={openRepo} title="Open the Qwacky repository">
           <Logo src="/assets/icons/qwacky.png" alt="Qwacky" />
           <Title>Qwacky</Title>
         </TitleSection>
         <IconsSection>
-          <IconButton onClick={openSupport}>
-            <MdFavorite size={24} />
-          </IconButton>
           {!isPopout && (
-            <IconButton onClick={handlePopout}>
+            <IconButton onClick={handlePopout} aria-label="Open in a window" title="Open in a window">
               <MdOpenInNew size={24} />
             </IconButton>
           )}
+          {userData && currentAccount && (
+            <MenuDropdown ref={accountDropdownRef}>
+              <AvatarButton
+                onClick={() => { setAccountDropdownOpen(!accountDropdownOpen); setMenuDropdownOpen(false) }}
+                aria-label="Account menu"
+                title="Account"
+                aria-expanded={accountDropdownOpen}
+              >
+                <Avatar color={colorOf(currentAccount)}>{getDisplayName(currentAccount).charAt(0)}</Avatar>
+              </AvatarButton>
+              <DropdownContent isOpen={accountDropdownOpen}>
+                <CurrentAccountItem>
+                  <Avatar color={colorOf(currentAccount)} size={24}>{getDisplayName(currentAccount).charAt(0)}</Avatar>
+                  <span className="username">{getDisplayName(currentAccount)}</span>
+                  <MdEdit
+                    size={22}
+                    className="edit-icon"
+                    onClick={handleEditNickname}
+                    title="Edit nickname"
+                  />
+                </CurrentAccountItem>
+                <ColorRow role="radiogroup" aria-label="Account colour">
+                  {Object.entries(ACCOUNT_COLORS).map(([key, value]) => (
+                    <ColorSwatch
+                      key={key}
+                      color={value}
+                      selected={(accountColors[currentAccount] || DEFAULT_COLOR) === key}
+                      role="radio"
+                      aria-checked={(accountColors[currentAccount] || DEFAULT_COLOR) === key}
+                      aria-label={key}
+                      onClick={() => handlePickColor(key)}
+                    />
+                  ))}
+                </ColorRow>
+                <DropdownDivider />
+                {accounts.length > 1 && (
+                  <>
+                    <SectionLabel>Switch to</SectionLabel>
+                    {accounts
+                      .filter(account => account.username !== currentAccount)
+                      .map(account => (
+                        <AccountItem
+                          key={account.username}
+                          onClick={() => handleSwitchAccount(account.username)}
+                        >
+                          <Avatar color={colorOf(account.username)} size={20}>{getDisplayName(account.username).charAt(0)}</Avatar>
+                          <span className="username">{getDisplayName(account.username)}</span>
+                        </AccountItem>
+                      ))
+                    }
+                    <DropdownDivider />
+                  </>
+                )}
+                <DropdownItem onClick={() => handleAccountItemClick(onAddAccountClick)}>
+                  <MdPersonAdd size={20} />
+                  Add account
+                </DropdownItem>
+                <DropdownItem onClick={() => handleAccountItemClick(onMyAccountClick)}>
+                  <MdManageAccounts size={20} />
+                  My account
+                </DropdownItem>
+                <DropdownDivider />
+                <DropdownItem onClick={handleLogoutClick} logout>
+                  <MdLogout size={20} />
+                  Log out
+                </DropdownItem>
+              </DropdownContent>
+            </MenuDropdown>
+          )}
           <MenuDropdown ref={menuDropdownRef}>
-            <IconButton onClick={() => setMenuDropdownOpen(!menuDropdownOpen)}>
+            <IconButton
+              onClick={() => { setMenuDropdownOpen(!menuDropdownOpen); setAccountDropdownOpen(false) }}
+              aria-label="Menu"
+              title="Menu"
+              aria-expanded={menuDropdownOpen}
+            >
               <MdMenu size={24} />
             </IconButton>
             <DropdownContent isOpen={menuDropdownOpen}>
-              {userData && (
-                <>
-                  <CurrentAccountItem>
-                    <MdAccountCircle size={20} />
-                    <span className="username">{currentAccount ? getDisplayName(currentAccount) : ''}</span>
-                    <MdEdit
-                      size={22}
-                      className="edit-icon"
-                      onClick={handleEditNickname}
-                    />
-                  </CurrentAccountItem>
-                  <DropdownDivider />
-                  {accounts.length > 1 && (
-                    <AccountsMenuWrapper isOpen={accountsListOpen}>
-                      <DropdownItem onClick={() => setAccountsListOpen(!accountsListOpen)}>
-                        <MdSwapHoriz size={20} />
-                        Switch account
-                        <MdKeyboardArrowDown
-                          size={20}
-                          style={{
-                            marginLeft: 'auto',
-                            transform: accountsListOpen ? 'rotate(180deg)' : 'none',
-                            transition: 'transform 0.15s'
-                          }}
-                        />
-                      </DropdownItem>
-                      <SubDropdown>
-                        {accounts
-                          .filter(account => account.username !== currentAccount)
-                          .map(account => (
-                            <AccountItem
-                              key={account.username}
-                              onClick={() => handleSwitchAccount(account.username)}
-                            >
-                              <MdAccountCircle size={16} />
-                              <span className="username">{getDisplayName(account.username)}</span>
-                            </AccountItem>
-                          ))
-                        }
-                      </SubDropdown>
-                    </AccountsMenuWrapper>
-                  )}
-                  {accountsListOpen && <DropdownDivider />}
-                  <DropdownItem onClick={() => handleMenuItemClick(onAddAccountClick)}>
-                    <MdPersonAdd size={20} />
-                    Add account
-                  </DropdownItem>
-                  <DropdownItem onClick={() => handleMenuItemClick(onMyAccountClick)}>
-                    <MdManageAccounts size={20} />
-                    My account
-                  </DropdownItem>
-                  <DropdownDivider />
-                </>
-              )}
               <DropdownItem onClick={() => handleMenuItemClick(onSettingsClick)}>
                 <MdSettings size={20} />
                 Settings
@@ -215,19 +271,14 @@ export const Header = ({ onSettingsClick, onAddAccountClick, onChangelogClick, o
                 <MdNewReleases size={20} />
                 What's new?
               </DropdownItem>
+              <DropdownItem onClick={() => handleMenuItemClick(openSupport)}>
+                <MdFavorite size={20} />
+                Support the project
+              </DropdownItem>
               <DropdownItem onClick={() => handleMenuItemClick(onAboutClick)}>
                 <MdInfoOutline size={20} />
                 About
               </DropdownItem>
-              {userData && (
-                <>
-                  <DropdownDivider />
-                  <DropdownItem onClick={handleLogoutClick} logout>
-                    <MdLogout size={20} />
-                    Log out
-                  </DropdownItem>
-                </>
-              )}
             </DropdownContent>
           </MenuDropdown>
         </IconsSection>

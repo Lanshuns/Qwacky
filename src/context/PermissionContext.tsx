@@ -45,7 +45,7 @@ export const PERMISSIONS: Record<PermissionType, Permission> = {
   },
   contextMenu: {
     name: 'Context menu',
-    description: '`contextMenus`\nFirefox requires this permission to be listed in the manifest\'s permissions block at install time, [Read More](https://github.com/Lanshuns/Qwacky?tab=readme-ov-file#browser-specific-permission-handling-and-limitations)',
+    description: '`contextMenus`\nFirefox requires this permission to be listed in the manifest\'s permissions block at install time, [Read More](https://github.com/Lanshuns/Qwacky/blob/main/PRIVACY.md#permissions)',
     isRequired: true,
     permissions: ['contextMenus']
   },

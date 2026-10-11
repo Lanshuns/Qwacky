@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { MdVisibility, MdVisibilityOff, MdEdit, MdCheck, MdClose, MdDelete, MdDeleteSweep, MdSearch, MdSort, MdClear, MdLabel, MdExpandMore, MdExpandLess } from "react-icons/md";
 import { ConfirmDialog } from './ConfirmDialog';
 import { SectionHeader } from '../styles/SharedStyles';
+import { compareTags } from '../utils/tags';
 import {
   Section,
   HeaderActions,
@@ -111,9 +112,11 @@ const renderItem = (
   const itemTags = item.tags || [];
 
   const handleAddTag = (tag: string) => {
-    const trimmed = tag.trim().toLowerCase();
-    if (!trimmed || itemTags.includes(trimmed) || !onUpdateTags) return;
-    onUpdateTags(item.key, [...itemTags, trimmed]);
+    const trimmed = tag.trim();
+    const lower = trimmed.toLowerCase();
+    if (!trimmed || itemTags.some(t => t.toLowerCase() === lower) || !onUpdateTags) return;
+    const existing = allTags?.find(t => t.toLowerCase() === lower);
+    onUpdateTags(item.key, [...itemTags, existing || trimmed]);
     setTagInputValue('');
   };
 
@@ -146,6 +149,28 @@ const renderItem = (
           <AddressText>{item.primaryText}</AddressText>
           {item.secondaryText && <ItemSubtext>{item.secondaryText}</ItemSubtext>}
         </AddressHeader>
+        {!(editing && editing.key === item.key) && (
+        <ButtonsContainer className="action-buttons">
+          {onUpdateTags && (
+            <IconButton
+              onClick={() => {
+                setEditingTags(editingTags === item.key ? null : item.key);
+                setTagInputValue('');
+              }}
+              aria-label="Edit tags"
+              title="Edit tags"
+            >
+              <MdLabel size={18} />
+            </IconButton>
+          )}
+          <IconButton onClick={() => handleEditNotes(item)} aria-label="Edit notes" title="Edit notes">
+            <MdEdit size={18} />
+          </IconButton>
+          <IconButton className="delete" onClick={() => setDeleteConfirm(item.key)} aria-label="Delete" title="Delete">
+            <MdDelete size={18} />
+          </IconButton>
+        </ButtonsContainer>
+        )}
       </AddressMain>
       <AddressTime>{formatTime(item.timestamp)}</AddressTime>
 
@@ -181,10 +206,10 @@ const renderItem = (
             placeholder="Add tag..."
             autoFocus
           />
-          <IconButton onClick={() => { handleAddTag(tagInputValue); }} aria-label="Add tag">
+          <IconButton onClick={() => { handleAddTag(tagInputValue); }} aria-label="Add tag" title="Add tag">
             <MdCheck size={16} />
           </IconButton>
-          <IconButton onClick={() => { setEditingTags(null); setTagInputValue(''); }} aria-label="Close tag input">
+          <IconButton onClick={() => { setEditingTags(null); setTagInputValue(''); }} aria-label="Close tag input" title="Close">
             <MdClose size={16} />
           </IconButton>
           {suggestions.length > 0 && (
@@ -214,37 +239,20 @@ const renderItem = (
             autoFocus={editing.autoFocus}
           />
           <NotesActions>
-            <IconButton onClick={handleSaveNotes} aria-label="Save notes">
+            <IconButton onClick={handleSaveNotes} aria-label="Save notes" title="Save">
               <MdCheck size={18} />
             </IconButton>
-            <IconButton onClick={handleCancelEdit} aria-label="Cancel editing">
+            <IconButton onClick={handleCancelEdit} aria-label="Cancel editing" title="Cancel">
               <MdClose size={18} />
             </IconButton>
           </NotesActions>
         </NotesEditContainer>
       ) : (
-        <NotesContainer>
-          {item.notes && <Notes>{item.notes}</Notes>}
-          <ButtonsContainer className="action-buttons">
-            {onUpdateTags && (
-              <IconButton
-                onClick={() => {
-                  setEditingTags(editingTags === item.key ? null : item.key);
-                  setTagInputValue('');
-                }}
-                aria-label="Edit tags"
-              >
-                <MdLabel size={18} />
-              </IconButton>
-            )}
-            <IconButton onClick={() => handleEditNotes(item)} aria-label="Edit notes">
-              <MdEdit size={18} />
-            </IconButton>
-            <IconButton className="delete" onClick={() => setDeleteConfirm(item.key)} aria-label="Delete">
-              <MdDelete size={18} />
-            </IconButton>
-          </ButtonsContainer>
-        </NotesContainer>
+        item.notes && (
+          <NotesContainer>
+            <Notes>{item.notes}</Notes>
+          </NotesContainer>
+        )
       )}
     </AddressItem>
   );
@@ -337,7 +345,7 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
     items.forEach(item => {
       (item.tags || []).forEach(t => tagSet.add(t));
     });
-    return Array.from(tagSet).sort();
+    return Array.from(tagSet).sort(compareTags);
   }, [items]);
 
   const filteredAndSorted = useMemo(() => {
@@ -387,7 +395,7 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
     });
 
     const result: Array<{ name: string; items: ListItem[] }> = [];
-    Array.from(groups.keys()).sort().forEach(tag => {
+    Array.from(groups.keys()).sort(compareTags).forEach(tag => {
       result.push({ name: tag, items: groups.get(tag)! });
     });
     if (untagged.length > 0) {
@@ -411,6 +419,13 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
       return next;
     });
   }, []);
+
+  const toggleGroupByTag = useCallback(() => {
+    if (!groupByTag) {
+      setCollapsedGroups(new Set([...uniqueTags, 'Untagged']));
+    }
+    setGroupByTag(prev => !prev);
+  }, [groupByTag, uniqueTags]);
 
   const getSortLabel = () => sortOrder === 'newest' ? 'Newest' : 'Oldest';
 
@@ -477,11 +492,11 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
           <h2>{config.title}</h2>
           <HeaderActions>
             {items.length > 0 && (
-              <IconButton className="clear" onClick={() => setShowClearConfirm(true)} aria-label={`Clear all ${config.itemsLabel}`}>
+              <IconButton className="clear" onClick={() => setShowClearConfirm(true)} aria-label={`Clear all ${config.itemsLabel}`} title={`Clear all ${config.itemsLabel}`}>
                 <MdDeleteSweep size={24} />
               </IconButton>
             )}
-            <IconButton onClick={toggleHidden} aria-label={hidden ? `Show ${config.itemsLabel}` : `Hide ${config.itemsLabel}`} aria-expanded={!hidden}>
+            <IconButton onClick={toggleHidden} aria-label={hidden ? `Show ${config.itemsLabel}` : `Hide ${config.itemsLabel}`} title={hidden ? `Show ${config.itemsLabel}` : `Hide ${config.itemsLabel}`} aria-expanded={!hidden}>
               {hidden ? <MdVisibility /> : <MdVisibilityOff />}
             </IconButton>
           </HeaderActions>
@@ -500,17 +515,17 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
                   aria-label={`Search ${config.itemsLabel}`}
                 />
                 {searchQuery && (
-                  <ClearSearchButton onClick={() => setSearchQuery('')} aria-label="Clear search">
+                  <ClearSearchButton onClick={() => setSearchQuery('')} aria-label="Clear search" title="Clear search">
                     <MdClear size={20} />
                   </ClearSearchButton>
                 )}
               </SearchInputWrapper>
-              <SortButton onClick={cycleSortOrder} active={sortOrder !== 'newest'} aria-label={`Sort by ${getSortLabel()}`}>
+              <SortButton onClick={cycleSortOrder} active={sortOrder !== 'newest'} aria-label={`Sort by ${getSortLabel()}`} title="Change sort order">
                 <MdSort />
                 {getSortLabel()}
               </SortButton>
               {uniqueTags.length > 0 && (
-                <GroupByButton onClick={() => setGroupByTag(prev => !prev)} active={groupByTag} aria-label="Group by tag">
+                <GroupByButton onClick={toggleGroupByTag} active={groupByTag} aria-label="Group by tag" title="Group by tag">
                   <MdLabel />
                   Group
                 </GroupByButton>

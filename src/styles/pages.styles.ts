@@ -189,11 +189,11 @@ export const OTPSuccessMessage = styled.p`
 
 
 export const DashboardContainer = styled.div`
-  padding: 16px 20px;
+  padding: var(--qw-page-pad, 16px 20px);
 `
 
 export const GenerateButton = styled(PrimaryButton)`
-  margin-bottom: 24px;
+  margin-bottom: var(--qw-btn-mb, 24px);
 `
 
 export const HistoryNotice = styled.div`
@@ -215,8 +215,8 @@ export const HistoryNotice = styled.div`
 `
 
 export const ReverseAliasSection = styled.div`
-  margin-bottom: 24px;
-  padding: 14px;
+  margin-bottom: var(--qw-btn-mb, 24px);
+  padding: var(--qw-card-pad, 14px);
   background: ${props => props.theme.surfaceElevated};
   border: 1px solid ${props => props.theme.borderLight};
   border-radius: 8px;
@@ -637,13 +637,6 @@ export const ExportButtonsContainer = styled.div`
   width: 100%;
 `
 
-export const BackupButtonsContainer = styled.div`
-  display: flex;
-  gap: 16px;
-  margin-top: 8px;
-  width: 100%;
-`
-
 export const BackupButton = styled.button`
   display: flex;
   align-items: center;
@@ -791,6 +784,15 @@ export const ChangelogContent = styled.div`
   line-height: 1.6;
   max-height: 400px;
   overflow-y: auto;
+
+  a {
+    color: ${props => props.theme.primary};
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 
   h1 {
     font-size: 20px;

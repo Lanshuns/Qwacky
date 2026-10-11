@@ -1,12 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Qwacky",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "Qwacky is an open source client for DuckDuckGo Email Protection, To manage and generate @duck.com aliases.",
   "browser_specific_settings": {
     "gecko": {
       "id": "qwacky@local-v1.0.1",
-      "strict_min_version": "128.0"
+      "strict_min_version": "128.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
     },
     "gecko_android": {
       "strict_min_version": "128.0"

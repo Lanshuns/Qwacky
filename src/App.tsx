@@ -68,19 +68,52 @@ const GlobalStyle = createGlobalStyle`
   }
 `
 
-const Container = styled.div`
+const Container = styled.div<{ $compact: boolean }>`
   width: 400px;
   max-width: 100%;
   min-height: 480px;
+  max-height: 600px;
   color: ${props => props.theme.text};
   position: relative;
   margin: auto;
   background: ${props => props.theme.background};
   overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+
+  @supports not selector(::-webkit-scrollbar) {
+    scrollbar-width: thin;
+  }
+
+  @media (min-height: 601px) {
+    max-height: none;
+  }
+
+  --qw-page-pad: ${props => props.$compact ? '10px 14px' : '16px 20px'};
+  --qw-header-pad: ${props => props.$compact ? '8px 12px' : '14px 16px'};
+  --qw-tabs-mb: ${props => props.$compact ? '12px' : '20px'};
+  --qw-tab-pad: ${props => props.$compact ? '7px 12px' : '10px 16px'};
+  --qw-btn-pad: ${props => props.$compact ? '10px' : '14px'};
+  --qw-btn-mb: ${props => props.$compact ? '12px' : '24px'};
+  --qw-card-pad: ${props => props.$compact ? '8px 10px' : '12px 14px'};
+  --qw-card-mb: ${props => props.$compact ? '8px' : '12px'};
+  --qw-section-pad: ${props => props.$compact ? '10px' : '16px'};
+  --qw-section-mb: ${props => props.$compact ? '12px' : '24px'};
+  --qw-bars-h: ${props => props.$compact ? '36px' : '48px'};
+  --qw-headline-size: ${props => props.$compact ? '26px' : '34px'};
+  --qw-list-pad: ${props => props.$compact ? '4px 8px' : '8px'};
+  --qw-item-pad: ${props => props.$compact ? '4px 4px' : '10px 4px'};
+  --qw-item-pad-top: ${props => props.$compact ? '2px' : '8px'};
+  --qw-item-header-pad: ${props => props.$compact ? '3px 10px' : '8px 10px'};
+  --qw-text-size: ${props => props.$compact ? '13px' : '14px'};
+  --qw-time-mt: ${props => props.$compact ? '-4px' : '2px'};
+  --qw-tags-pad: ${props => props.$compact ? '2px 8px' : '4px 8px'};
+  --qw-notes-pad: ${props => props.$compact ? '2px 8px 0' : '6px 8px 2px'};
+  --qw-notes-size: ${props => props.$compact ? '12px' : '13px'};
 `
 
 export const App = () => {
-  const { darkMode, userData } = useApp()
+  const { darkMode, userData, compactMode } = useApp()
   const [currentPage, setCurrentPage] = useState('login')
   const [tempUsername, setTempUsername] = useState('')
   const [showSettings, setShowSettings] = useState(false)
@@ -308,7 +341,7 @@ export const App = () => {
   return (
     <ThemeProvider theme={darkMode ? theme.dark : theme.light}>
       <GlobalStyle />
-      <Container>
+      <Container $compact={compactMode}>
         <Header
           onSettingsClick={toggleSettings}
           onAddAccountClick={handleAddAccount}

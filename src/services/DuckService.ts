@@ -1,7 +1,7 @@
 import { AuthService } from './AuthService'
 import { StorageService } from './StorageService'
 import { ImportExportService, ImportAddressesResult } from './ImportExportService'
-import { LoginResponse, VerifyResponse, GenerateResponse, UserData, ReverseAlias } from '../types'
+import { LoginResponse, VerifyResponse, GenerateResponse, UserData, ReverseAlias, AddressSource } from '../types'
 
 export class DuckService {
   private auth: AuthService
@@ -60,7 +60,7 @@ export class DuckService {
     }
   }
 
-  async generateAddress(notes?: string): Promise<GenerateResponse> {
+  async generateAddress(notes?: string, source?: AddressSource): Promise<GenerateResponse> {
     try {
       const userData = await this.storage.getUserData()
       if (!userData) {
@@ -79,7 +79,7 @@ export class DuckService {
         
         const neverSave = await this.storage.getNeverSaveAddresses()
         if (!neverSave) {
-          await this.storage.saveGeneratedAddress(response.address, notes)
+          await this.storage.saveGeneratedAddress(response.address, notes, source)
         }
 
         const latestUserData = await this.storage.getUserData()

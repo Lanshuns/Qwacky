@@ -89,6 +89,9 @@ export const Settings = ({ onBack }: SettingsProps) => {
   const syncService = useMemo(() => new SyncService(), []);
   const [timeFormat, setTimeFormat] = useState<TimeFormat>('12h');
   const [neverSaveAddresses, setNeverSaveAddresses] = useState(false);
+  const { compactMode, setCompactMode } = useApp();
+  const [showStats, setShowStats] = useState(true);
+  const [showLatest, setShowLatest] = useState(true);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [syncOptions, setSyncOptions] = useState<SyncOptions>({ enabled: false, addresses: true, reverseAliases: true, session: false, syncAccounts: [] });
   const [includeSession, setIncludeSession] = useState(false);
@@ -114,7 +117,23 @@ export const Settings = ({ onBack }: SettingsProps) => {
   useEffect(() => {
     storageService.getTimeFormat().then(setTimeFormat);
     storageService.getNeverSaveAddresses().then(setNeverSaveAddresses);
+    storageService.getShowStats().then(setShowStats);
+    storageService.getShowLatest().then(setShowLatest);
   }, [storageService]);
+
+  const handleCompactModeChange = (enabled: boolean) => {
+    setCompactMode(enabled);
+  };
+
+  const handleShowStatsChange = async (enabled: boolean) => {
+    setShowStats(enabled);
+    await storageService.setShowStats(enabled);
+  };
+
+  const handleShowLatestChange = async (enabled: boolean) => {
+    setShowLatest(enabled);
+    await storageService.setShowLatest(enabled);
+  };
 
   const handleTimeFormatChange = async (use24h: boolean) => {
     const format: TimeFormat = use24h ? '24h' : '12h';
@@ -345,7 +364,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
     if (s.action === 'export') {
       lines.push(`Accounts: ${s.accounts.map(a => a.username + '@duck.com').join(', ')}`);
       lines.push(`Addresses: ${s.totalAddresses}`);
-      lines.push(`Reverse aliases: ${s.totalReverseAliases}`);
+      lines.push(`Send addresses: ${s.totalReverseAliases}`);
       if (s.includesSession) lines.push(`Session data: included`);
     } else {
       if (s.newAccounts && s.newAccounts > 0) {
@@ -354,7 +373,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
       for (const a of s.accounts) {
         const parts: string[] = [];
         if (a.addresses > 0) parts.push(`${a.addresses} addresses`);
-        if (a.reverseAliases > 0) parts.push(`${a.reverseAliases} reverse aliases`);
+        if (a.reverseAliases > 0) parts.push(`${a.reverseAliases} send addresses`);
         if (parts.length > 0) {
           lines.push(`${a.username}@duck.com: +${parts.join(', ')}`);
         }
@@ -362,7 +381,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
       if ((s.skippedAddresses || 0) > 0 || (s.skippedReverseAliases || 0) > 0) {
         const skipped: string[] = [];
         if (s.skippedAddresses) skipped.push(`${s.skippedAddresses} addresses`);
-        if (s.skippedReverseAliases) skipped.push(`${s.skippedReverseAliases} reverse aliases`);
+        if (s.skippedReverseAliases) skipped.push(`${s.skippedReverseAliases} send addresses`);
         lines.push(`Skipped (already exist): ${skipped.join(', ')}`);
       }
       if (s.newAddresses === 0 && s.newReverseAliases === 0 && (!s.newAccounts || s.newAccounts === 0)) {
@@ -575,6 +594,39 @@ export const Settings = ({ onBack }: SettingsProps) => {
           </SyncToggleSwitch>
           24-hour time
         </SyncOptionRow>
+        <SyncOptionRow>
+          <SyncToggleSwitch>
+            <SyncToggleInput
+              type="checkbox"
+              checked={compactMode}
+              onChange={(e) => handleCompactModeChange(e.target.checked)}
+            />
+            <SyncToggleSlider />
+          </SyncToggleSwitch>
+          Compact mode
+        </SyncOptionRow>
+        <SyncOptionRow>
+          <SyncToggleSwitch>
+            <SyncToggleInput
+              type="checkbox"
+              checked={showStats}
+              onChange={(e) => handleShowStatsChange(e.target.checked)}
+            />
+            <SyncToggleSlider />
+          </SyncToggleSwitch>
+          Statistics on Home
+        </SyncOptionRow>
+        <SyncOptionRow>
+          <SyncToggleSwitch>
+            <SyncToggleInput
+              type="checkbox"
+              checked={showLatest}
+              onChange={(e) => handleShowLatestChange(e.target.checked)}
+            />
+            <SyncToggleSlider />
+          </SyncToggleSwitch>
+          Latest address on Home
+        </SyncOptionRow>
       </Section>
 
       <Section>
@@ -595,7 +647,6 @@ export const Settings = ({ onBack }: SettingsProps) => {
         ))}
         <ToggleContainer>
           <ToggleHeader>
-            <ToggleTitle>History</ToggleTitle>
             <ToggleSwitch>
               <ToggleInput
                 type="checkbox"
@@ -604,6 +655,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
               />
               <ToggleSlider />
             </ToggleSwitch>
+            <ToggleTitle>History</ToggleTitle>
           </ToggleHeader>
           <ToggleDescription>
             Keep a list of the addresses you generate and the recipients you convert. Turn this off and new ones are only copied to the clipboard, nothing is stored.
@@ -617,6 +669,8 @@ export const Settings = ({ onBack }: SettingsProps) => {
             <MdSync size={20} style={{ marginRight: '8px' }} />
             Sync
           </h2>
+        </SectionHeader>
+        <SyncOptionRow style={{ marginBottom: syncOptions.enabled ? '12px' : 0 }}>
           <SyncToggleSwitch>
             <SyncToggleInput
               type="checkbox"
@@ -626,7 +680,8 @@ export const Settings = ({ onBack }: SettingsProps) => {
             />
             <SyncToggleSlider />
           </SyncToggleSwitch>
-        </SectionHeader>
+          Sync across devices
+        </SyncOptionRow>
 
         {syncOptions.enabled && (
           <>
@@ -682,7 +737,7 @@ export const Settings = ({ onBack }: SettingsProps) => {
                   />
                   <SyncToggleSlider />
                 </SyncToggleSwitch>
-                Reverse Aliases
+                Send addresses
               </SyncOptionRow>
               <SyncOptionRow>
                 <SyncToggleSwitch>

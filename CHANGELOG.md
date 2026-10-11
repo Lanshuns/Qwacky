@@ -1,5 +1,30 @@
 # Changelog
 
+## 3.0.0
+
+### Added
+- **Home tab** - the popup now opens on Home: the generate button, your latest address, and usage statistics computed on your device, such as addresses over time, the tags you use most, send addresses, and how many came from the right-click menu or the shortcut. The latest address card and the statistics can each be turned off in Settings
+- **Account menu** - an avatar next to the menu button holds your accounts, Add account, My account and Log out. Pick a colour per account so you can tell them apart at a glance
+- **Compact mode** - a denser layout across the whole popup, in Settings > Appearance
+- **History toggle** - turn off address history under Permissions & features and new addresses and send addresses are only copied to the clipboard, nothing is stored on the device (contributed by [uacat](https://codeberg.org/uacat/) on Codeberg)
+- **Generating indicator** - a spinner shows on the page while the right-click menu or the keyboard shortcut generates an address, so you know it is working (contributed by [@evil1morty](https://github.com/evil1morty))
+
+### Fixed
+- **Silent generate failures** - the popup now tells you why DuckDuckGo rejected a request (expired session, rate limit, or the error code) instead of doing nothing
+- **Imported addresses disappearing** - addresses restored from a .txt list or a backup are written to sync as well, so they no longer vanish when sync is on
+- **Sync losing changes** - with sync on, changes now reach sync straight away instead of two seconds later, so closing the popup right after an edit or import, adding two tags in a row, or generating twice quickly no longer drops a change, and tags and notes show up as soon as you save them
+- **duckduckgo.com generator** - the Private Duck Address generator on duckduckgo.com/email shows again while signed in through Qwacky
+- **Popup width** - the popup no longer grows a few pixels wider on tabs that scroll
+- **Firefox for Android** - the Autofill toggle is disabled with an explanation instead of appearing to work, since Firefox for Android has no extension context menus or keyboard shortcuts
+- **Button contrast** - orange buttons use dark text so the label is readable
+- **Changelog links** - links in What's new use the accent colour instead of the browser default
+
+### Changed
+- **Three tabs** - Home, Addresses and Send. The address list moved from the old Generate tab to Addresses, and the lists are titled Address history and Send history
+- **Tighter list items** - the tag, edit and delete buttons sit in the title row and the notes line only shows when there are notes, so each item takes noticeably less space (suggested in #26)
+- **Tags** - tags keep the capitals you type, the tag filter wraps onto new lines instead of scrolling sideways, and turning on Group starts with every group collapsed (suggested on the Privacy Guides forum)
+- **Firefox 128 or newer** - the minimum Firefox version is now 128 on desktop and Android, which the duckduckgo.com sign-in bridge requires
+
 ## 2.1.0
 
 ### Added

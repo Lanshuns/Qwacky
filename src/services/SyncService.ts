@@ -55,12 +55,11 @@ export class SyncService {
   private static SYNC_LAST_SYNC_KEY = 'lastSyncTime';
   private static SESSION_CACHE_PREFIX = 'sync_cache_';
   private static COMPRESSION_THRESHOLD = 4096;
-  private static DEBOUNCE_MS = 2000;
 
   private syncLock: Promise<void> = Promise.resolve();
-  private pendingWrites = new Map<string, {
+  private queuedWrites = new Map<string, {
     data: any[];
-    timer: ReturnType<typeof setTimeout>;
+    waiters: Array<{ resolve: () => void; reject: (error: unknown) => void }>;
   }>();
 
   constructor() {
@@ -75,19 +74,34 @@ export class SyncService {
   }
 
   async flushPendingWrites(): Promise<void> {
-    const entries = Array.from(this.pendingWrites.entries());
-    this.pendingWrites.clear();
-    for (const [accountKey, { data, timer }] of entries) {
-      clearTimeout(timer);
-      const release = await this.acquireLock();
-      try {
-        await this.executeSyncWrite(accountKey, data);
-      } catch (error) {
-        console.error('Flush write error:', error);
-      } finally {
-        release();
+    const release = await this.acquireLock();
+    release();
+  }
+
+  private queueSyncWrite(accountKey: string, data: any[]): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const queued = this.queuedWrites.get(accountKey);
+      if (queued) {
+        queued.data = data;
+        queued.waiters.push({ resolve, reject });
+        return;
       }
-    }
+
+      const entry = { data, waiters: [{ resolve, reject }] };
+      this.queuedWrites.set(accountKey, entry);
+
+      this.acquireLock().then(async release => {
+        this.queuedWrites.delete(accountKey);
+        try {
+          await this.executeSyncWrite(accountKey, entry.data);
+          entry.waiters.forEach(waiter => waiter.resolve());
+        } catch (error) {
+          entry.waiters.forEach(waiter => waiter.reject(error));
+        } finally {
+          release();
+        }
+      });
+    });
   }
 
   private validateAddresses(data: any[]): Address[] {
@@ -363,7 +377,7 @@ export class SyncService {
             (d: any[]) => this.validateReverseAliases(d)
           );
           if (result.error) return { success: false, message: result.error };
-          parts.push(`${result.count} reverse aliases`);
+          parts.push(`${result.count} send addresses`);
         }
       }
 
@@ -441,27 +455,7 @@ export class SyncService {
       lastModified: addr.lastModified || Date.now()
     }));
 
-    const pending = this.pendingWrites.get(accountKey);
-    if (pending) {
-      clearTimeout(pending.timer);
-    }
-
-    return new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(async () => {
-        this.pendingWrites.delete(accountKey);
-        const release = await this.acquireLock();
-        try {
-          await this.executeSyncWrite(accountKey, addressesWithTimestamp);
-          resolve();
-        } catch (error) {
-          reject(error);
-        } finally {
-          release();
-        }
-      }, SyncService.DEBOUNCE_MS);
-
-      this.pendingWrites.set(accountKey, { data: addressesWithTimestamp, timer });
-    });
+    return this.queueSyncWrite(accountKey, addressesWithTimestamp);
   }
 
   private async executeSyncWrite(accountKey: string, data: any[]): Promise<void> {
@@ -622,27 +616,7 @@ export class SyncService {
       lastModified: alias.lastModified || Date.now(),
     }));
 
-    const pending = this.pendingWrites.get(accountKey);
-    if (pending) {
-      clearTimeout(pending.timer);
-    }
-
-    return new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(async () => {
-        this.pendingWrites.delete(accountKey);
-        const release = await this.acquireLock();
-        try {
-          await this.executeSyncWrite(accountKey, aliasesWithTimestamp);
-          resolve();
-        } catch (error) {
-          reject(error);
-        } finally {
-          release();
-        }
-      }, SyncService.DEBOUNCE_MS);
-
-      this.pendingWrites.set(accountKey, { data: aliasesWithTimestamp, timer });
-    });
+    return this.queueSyncWrite(accountKey, aliasesWithTimestamp);
   }
 
   async getReverseAliasesFromSync(username: string): Promise<ReverseAliasSync[] | null> {
@@ -1011,7 +985,7 @@ export class SyncService {
             if (!msg.includes('Receiving end does not exist')) console.error('Message send failed:', msg);
           });
 
-          parts.push(`${mergedAliases.length} reverse aliases`);
+          parts.push(`${mergedAliases.length} send addresses`);
         }
       }
 

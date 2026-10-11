@@ -1,10 +1,10 @@
 import styled from 'styled-components'
 
 export const Section = styled.div`
-  margin-bottom: 24px;
+  margin-bottom: var(--qw-section-mb, 24px);
   background: ${props => props.theme.surfaceElevated};
   border-radius: 8px;
-  padding: 16px;
+  padding: var(--qw-section-pad, 16px);
   border: 1px solid ${props => props.theme.borderLight};
 `
 
@@ -78,7 +78,7 @@ export const BackButton = styled.button`
 
 export const PrimaryButton = styled.button`
   width: 100%;
-  padding: 14px;
+  padding: var(--qw-btn-pad, 14px);
   background: ${props => props.theme.primary};
   color: ${props => props.theme.textOnPrimary};
   border: none;

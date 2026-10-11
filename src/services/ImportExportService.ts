@@ -1,6 +1,6 @@
 import { StorageService } from './StorageService';
 import { SyncService } from './SyncService';
-import { QwackyBackup, BackupSummary } from '../types';
+import { QwackyBackup, BackupSummary, AddressSource, ReverseAlias } from '../types';
 
 interface Address {
   value: string;
@@ -8,6 +8,7 @@ interface Address {
   notes?: string;
   tags?: string[];
   username?: string;
+  source?: AddressSource;
 }
 
 const ALIAS_PATTERN = /^[a-z0-9._-]{1,64}$/;
@@ -45,7 +46,7 @@ export class ImportExportService {
     this.sync = new SyncService();
   }
 
-  private async persistAddresses(username: string, addresses: any[]): Promise<void> {
+  private async persistAddresses(username: string, addresses: Address[]): Promise<void> {
     await chrome.storage.local.set({ [`addresses_${username}`]: addresses });
     try {
       await this.sync.saveAddressesToSync(username, addresses);
@@ -54,7 +55,7 @@ export class ImportExportService {
     }
   }
 
-  private async persistReverseAliases(username: string, aliases: any[]): Promise<void> {
+  private async persistReverseAliases(username: string, aliases: ReverseAlias[]): Promise<void> {
     await chrome.storage.local.set({ [`reverse_aliases_${username}`]: aliases });
     try {
       await this.sync.saveReverseAliasesToSync(username, aliases);
@@ -91,7 +92,7 @@ export class ImportExportService {
       .split(/[\r\n,;]+/)
       .map(line => line.trim())
       .filter(line => line !== '')
-      .map(value => ({ value }));
+      .map(value => ({ value, source: 'import' as const }));
 
     if (records.length === 0) {
       return { success: false, count: 0, duplicates: 0, invalid: 0, error: 'No addresses found in file' };
@@ -101,7 +102,7 @@ export class ImportExportService {
   }
 
   private async importAddressRecords(
-    records: Array<{ value?: string; timestamp?: number; notes?: string; tags?: string[] }>
+    records: Array<{ value?: string; timestamp?: number; notes?: string; tags?: string[]; source?: AddressSource }>
   ): Promise<ImportAddressesResult> {
     try {
       let invalid = 0;
@@ -125,7 +126,8 @@ export class ImportExportService {
           ...record,
           value,
           timestamp: record.timestamp || Date.now(),
-          notes: record.notes || ''
+          notes: record.notes || '',
+          ...(record.source || !record.timestamp ? { source: record.source || 'import' as const } : {})
         });
       }
 
@@ -224,7 +226,8 @@ export class ImportExportService {
           value: `${addr.value}@duck.com`,
           timestamp: addr.timestamp,
           notes: addr.notes || '',
-          tags: addr.tags || []
+          tags: addr.tags || [],
+          ...(addr.source ? { source: addr.source } : {})
         })));
 
         allReverseAliases.push(...reverseAliases.map((alias: any) => ({
@@ -450,7 +453,8 @@ export class ImportExportService {
             timestamp: addr.timestamp || Date.now(),
             notes: addr.notes || '',
             tags: addr.tags || [],
-            username
+            username,
+            ...(addr.source || !addr.timestamp ? { source: addr.source || 'import' as const } : {})
           }))
           .filter(addr => addr.value && !existingMap.has(addr.value));
 

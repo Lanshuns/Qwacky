@@ -1,155 +1,105 @@
 <p align="center">
-  <img src="assets/icons/qwacky.png" alt="Qwacky Logo" width="128" height="128">
+  <img src="assets/icons/qwacky.png" alt="Qwacky logo" width="112" height="112">
 </p>
 
-<p align="center">
-<a href="#-why-qwacky">Why Qwacky?</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#-download">Download</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#-features">Features</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#-screenshots">Screenshots</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#-security--privacy">Security & Privacy</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#️-manual-installation">Manual Installation</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#-development">Development</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#-support-the-project">Support the Project</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#-acknowledgments">Acknowledgments</a>
-</p>
+<h1 align="center">Qwacky</h1>
 
-# 🦆 Why Qwacky?
-
-[DuckDuckGo Email Protection](https://duckduckgo.com/email) is a great service, but using it requires installing the full DuckDuckGo extension, which comes with some limitations:
-
-- Tracking protection can only be disabled per website, not globally
-- Your default search engine gets changed to DuckDuckGo
-- No way to use email protection as a standalone feature
-
-Qwacky solves this by providing a lightweight, standalone alternative focused entirely on the email protection service, packed with extra features you won't find in the original extension.
-
-# 📥 Download
+<p align="center">A home for your DuckDuckGo <b>@duck.com</b> addresses. Generate, organise and send from them, right in your browser.</p>
 
 <table align="center">
   <tr>
     <td align="center" width="50%">
-      <a href="https://chromewebstore.google.com/detail/qwacky/kieehbhdbincplacegpjdkoglfakboeo"><img src="https://user-images.githubusercontent.com/585534/107280622-91a8ea80-6a26-11eb-8d07-77c548b28665.png" alt="Get Qwacky for Chrome"></a>
-      <br><br>
+      <a href="https://chromewebstore.google.com/detail/qwacky/kieehbhdbincplacegpjdkoglfakboeo"><picture>
+        <source media="(prefers-color-scheme: dark)" srcset="assets/images/stores/chromium-dark.png">
+        <img src="assets/images/stores/chromium-light.png" alt="Get Qwacky for Chrome, Edge, Brave and other Chromium browsers from the Chrome Web Store" width="380">
+      </picture></a>
+      <br>
+      <a href="https://chromewebstore.google.com/detail/qwacky/kieehbhdbincplacegpjdkoglfakboeo"><img src="https://img.shields.io/chrome-web-store/v/kieehbhdbincplacegpjdkoglfakboeo?label=version" alt="Chrome Web Store version"></a>
       <a href="https://chromewebstore.google.com/detail/qwacky/kieehbhdbincplacegpjdkoglfakboeo"><img src="https://img.shields.io/chrome-web-store/users/kieehbhdbincplacegpjdkoglfakboeo?label=users" alt="Chrome Web Store users"></a>
       <a href="https://chromewebstore.google.com/detail/qwacky/kieehbhdbincplacegpjdkoglfakboeo"><img src="https://img.shields.io/chrome-web-store/rating/kieehbhdbincplacegpjdkoglfakboeo?label=rating" alt="Chrome Web Store rating"></a>
     </td>
     <td align="center" width="50%">
-      <a href="https://addons.mozilla.org/en-US/firefox/addon/qwacky/"><img src="https://user-images.githubusercontent.com/585534/107280546-7b9b2a00-6a26-11eb-8f9f-f95932f4bfec.png" alt="Get Qwacky for Firefox"></a>
-      <br><br>
+      <a href="https://addons.mozilla.org/en-US/firefox/addon/qwacky/"><picture>
+        <source media="(prefers-color-scheme: dark)" srcset="assets/images/stores/firefox-dark.png">
+        <img src="assets/images/stores/firefox-light.png" alt="Get Qwacky for Firefox, LibreWolf, Zen and other Firefox-based browsers from Firefox Add-ons" width="380">
+      </picture></a>
+      <br>
+      <a href="https://addons.mozilla.org/en-US/firefox/addon/qwacky/"><img src="https://img.shields.io/amo/v/qwacky?label=version" alt="Firefox Add-ons version"></a>
       <a href="https://addons.mozilla.org/en-US/firefox/addon/qwacky/"><img src="https://img.shields.io/amo/users/qwacky?label=users" alt="Firefox Add-ons users"></a>
       <a href="https://addons.mozilla.org/en-US/firefox/addon/qwacky/"><img src="https://img.shields.io/amo/rating/qwacky?label=rating" alt="Firefox Add-ons rating"></a>
     </td>
   </tr>
 </table>
 
+<p align="center">
+<a href="#-why-qwacky">Why Qwacky?</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#-features">Features</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#-privacy">Privacy</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#-install-manually">Install manually</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#-development">Development</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<a href="#-support-the-project">Support the Project</a>
+</p>
+
+<p align="center">
+  <img src="assets/images/banner.png" alt="Qwacky" width="720">
+</p>
+
+# 🦆 Why Qwacky?
+
+[DuckDuckGo Email Protection](https://duckduckgo.com/email) gives you private @duck.com addresses that forward to your real inbox with email trackers removed. Qwacky is a dedicated home for those addresses.
+
+The DuckDuckGo extension treats an alias as something you generate and forget. Qwacky treats it as something you manage: a searchable history with notes and tags, send addresses with their own history, several Duck accounts side by side, autofill from the right-click menu or a keyboard shortcut, light and dark themes, backups and sync, and usage statistics computed on your device. It asks for one host permission, runs no analytics, and does nothing else.
+
 # ✨ Features
-- **Private @duck.com addresses:** generate and manage aliases without the full DuckDuckGo extension
-- **Autofill anywhere:** fill any email field from the right-click menu or a keyboard shortcut
-- **Send privately:** turn any recipient into a duck.com address so your real one stays hidden
-- **Stay organized:** notes, tags, search and filtering across all your addresses
-- **Multiple accounts:** manage and switch between duck accounts in one place
+- **Private @duck.com addresses:** generate a fresh alias from the popup, the right-click menu or a keyboard shortcut
+- **A home for every alias:** searchable history with notes, tags, grouping and filtering
+- **Send privately:** turn any recipient into a send address so your real one stays hidden
+- **Multiple accounts:** manage and switch between colour-coded Duck accounts in one place
+- **Your numbers, on your device:** usage statistics with nothing sent anywhere
 - **Your data, portable:** cross-device sync, plus backup and restore
-- **And more!**
+- **Your call:** privacy mode that stores nothing, compact mode, light and dark themes
+- **And more on the way**
 
-## Browser Compatibility
+# 🔒 Privacy
+<a name="browser-specific-permission-handling-and-limitations"></a>
 
-Qwacky is designed to work seamlessly on both Chrome and Firefox. The build process automatically handles browser-specific requirements:
+- Talks only to DuckDuckGo, and to your browser's sync if you turn it on
+- Everything is stored on your device, with no servers, analytics or tracking
+- Autofill permissions are optional and off until you enable them
+- Open source, so every claim here can be checked
 
-- **Chrome**: Uses service workers for background scripts (Manifest V3)
-- **Firefox**: Uses background scripts with polyfill support (Manifest V3)
+Read the full [privacy policy](PRIVACY.md) for what is stored and why each permission is needed.
 
-Both versions maintain feature parity while adhering to each browser's best practices and security models.
+# 📦 Install manually
 
-# 📸 Screenshots
-![Qwacky Banner](assets/images/banner2.png)
-> **A big thanks to [@m.miriam12398](https://www.instagram.com/m.miriam12398/) for contributing by making such a cool designs for the project!**
+Every [release](https://github.com/Lanshuns/Qwacky/releases) on GitHub includes both builds, if you'd rather not use a store or need a specific version.
 
-# 🔒 Security & Privacy
-- Uses minimal permissions required for functionality
-- All data is stored locally on your device
-- No tracking or analytics
-- Manifest V3 for better security
-- Open source for transparency
+**Chrome, Edge, Brave and other Chromium browsers**
+1. Download `chrome-vX.Y.Z.zip` from the release and unzip it
+2. Open your extensions page (`chrome://extensions`, or `edge://extensions` in Edge) and turn on **Developer mode**
+3. Click **Load unpacked** and pick the unzipped folder
 
-## Permissions
-- `Storage`: Required to store your generated addresses and settings locally
-- `Context Menu Autofill`: This toggle enables generating aliases from the context menu, auto-detecting email fields, It requires the following optional permissions:
-  - `contextMenus`: Enables the context menu for quick address generation
-  - `activeTab`: Required to access and inject scripts into the current tab only when you explicitly interact with the extension (e.g., using the context menu to fill email addresses)
-  - `clipboardWrite`: Needed to copy the generated address to the clipboard
-  - `scripting`: Required for programmatically injecting the content script when using the context menu
+A build loaded this way doesn't update itself, so check Releases for new versions.
 
-## Browser-Specific Permission Handling and Limitations
-
-Firefox and Chrome differ in how they manage and display extension permissions like `contextMenus`:
-
-- **Firefox** requires `contextMenus` to be listed in the manifest's `permissions` block at install time. Unlike Chrome, Firefox **does not support** requesting `contextMenus` as an optional permission in Manifest V3. This is because the permission directly affects browser UI elements (like the right-click menu), and Firefox enforces that such changes be explicitly declared up front.
-- **Chrome**, on the other hand, allows `contextMenus` to be declared in `optional_permissions` and requested at runtime. However, even after removing permissions programmatically using `chrome.permissions.remove()`, they may still appear under `chrome://extensions` as "granted" - even if they're no longer active.
-
-To maintain compatibility and avoid unexpected behavior:
-- We include `contextMenus` in the required permissions for Firefox.
-- We still use runtime permission requests for Chrome where possible, in line with its model.
-
-This difference in behavior is a known limitation in Chrome and has been discussed by the Chromium team:
-- [Chromium Extensions Group – Optional Permission Removal Behavior](https://groups.google.com/a/chromium.org/g/chromium-extensions/c/tqbVLwgVh58)
-- [Chrome Developers Documentation – Optional Permissions](https://developer.chrome.com/docs/extensions/mv3/declare_permissions/#optional-permissions)
-- [Mozilla Discourse – `contextMenus` as an optional permission is not supported in Firefox](https://discourse.mozilla.org/t/contextmenus-as-an-optional-permission/64181)
-
-# 🛠️ Manual Installation
-
-### Chrome
-1. Download the latest release from the [GitHub Releases](https://github.com/Lanshuns/Qwacky/releases) page
-2. Unzip the downloaded file
-3. Open Chrome and go to `chrome://extensions/`
-4. Enable "Developer mode" in the top right
-5. Click "Load unpacked" and select the unzipped folder
-
-### Firefox
-1. Download the Firefox version (.xpi file) from the [GitHub Releases](https://github.com/Lanshuns/Qwacky/releases) page
-2. Open Firefox and go to `about:addons`
-3. Click the gear icon and select "Install Add-on From File..."
-4. Select the downloaded .xpi file
+**Firefox**
+1. Download `firefox-vX.Y.Z.xpi` from the release, it's signed by Mozilla
+2. Open `about:addons`, click the gear icon and choose **Install Add-on From File...**
+3. Pick the downloaded file
 
 # 💻 Development
 
-## Prerequisites
-- Node.js (v16 or higher)
-- npm (v7 or higher)
+Requires Node.js 16 or newer.
 
-## Setup
 ```bash
-# 1. Clone the repository
 git clone https://github.com/Lanshuns/Qwacky.git
-cd qwacky
-# 2. Install dependencies
+cd Qwacky
 npm install
+npm run dev            # Chrome, watches into dist_chrome/
+npm run dev:firefox    # Firefox, watches into dist_firefox/
+npm run build          # production build (build:firefox for Firefox)
 ```
 
-## Development Mode
-
-```bash
-# For Chrome
-npm run dev
-# For Firefox
-npm run dev:firefox
-```
-
-## Production Build
-
-```bash
-# For Chrome
-npm run build
-# For Firefox
-npm run build:firefox
-```
-
-The built extension will be available in `dist_chrome/` or `dist_firefox/` respectively.
-
-> **Note**: For development and temporary installation in Firefox, you can use `about:debugging` method:
-> 1. Go to `about:debugging`
-> 2. Click "This Firefox" in the left sidebar
-> 3. Click "Load Temporary Add-on"
-> 4. Select the `manifest.json` file from the `dist_firefox/` folder
+Load `dist_chrome/` with "Load unpacked" in `chrome://extensions/`, or load `dist_firefox/manifest.json` from `about:debugging` > This Firefox > "Load Temporary Add-on".
 
 # 💖 Support the Project
 
-There are a few ways you can support Qwacky's development:
-
-- **Star the repository** on GitHub it helps others discover the project
-- **Leave a review** on the [Chrome Web Store](https://chromewebstore.google.com/detail/qwacky/kieehbhdbincplacegpjdkoglfakboeo/reviews) or [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/qwacky/reviews/) it makes a big difference!
+- **Star the repository** on GitHub, it helps others discover the project
+- **Leave a review** on the [Chrome Web Store](https://chromewebstore.google.com/detail/qwacky/kieehbhdbincplacegpjdkoglfakboeo/reviews) or [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/qwacky/reviews/), it makes a big difference
 - **Donate via cryptocurrency:**
 
 | Currency | Address |
