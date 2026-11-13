@@ -1,7 +1,15 @@
 import { AuthService } from './AuthService'
 import { StorageService } from './StorageService'
 import { ImportExportService, ImportAddressesResult } from './ImportExportService'
-import { LoginResponse, VerifyResponse, GenerateResponse, UserData, ReverseAlias, AddressSource } from '../types'
+import {
+  LoginResponse,
+  VerifyResponse,
+  GenerateResponse,
+  UserData,
+  ReverseAlias,
+  AddressSource,
+  ActiveResponse
+} from '../types'
 
 export class DuckService {
   private auth: AuthService
@@ -162,6 +170,68 @@ export class DuckService {
     } catch (error: unknown) {
       console.error('Error updating address tags:', error)
       return false
+    }
+  }
+
+  async refreshAddressActive(addressValue: string): Promise<ActiveResponse> {
+    try {
+      if (!addressValue) {
+        return { status: 'error', message: 'Cannot update active: Address value is required' }
+      }
+
+      const userData = await this.storage.getUserData()
+      if (!userData) {
+        return { status: 'error', message: 'You need to login first' }
+      }
+
+      if (!userData.user || !userData.user.access_token) {
+        return { status: 'error', message: 'Invalid user data. Please log in again.' }
+      }
+
+      const response = await this.auth.getActivationStatus(userData.user.access_token, addressValue)
+      if (response.status === 'success') {
+        await this.storage.updateAddressActive(addressValue, response.active)
+      }
+      return response
+    } catch (error: unknown) {
+      console.error('Error refreshing address active:', error)
+      return {
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Unknown error refreshing address active'
+      }
+    }
+  }
+
+  async setAddressActive(addressValue: string, active: boolean): Promise<ActiveResponse> {
+    try {
+      if (!addressValue) {
+        return { status: 'error', message: 'Cannot update active: Address value is required' }
+      }
+
+      if (typeof active !== 'boolean') {
+        return { status: 'error', message: 'Cannot update active: Active value is required' }
+      }
+
+      const userData = await this.storage.getUserData()
+      if (!userData) {
+        return { status: 'error', message: 'You need to login first' }
+      }
+
+      if (!userData.user || !userData.user.access_token) {
+        return { status: 'error', message: 'Invalid user data. Please log in again.' }
+      }
+
+      const response = await this.auth.setActivationStatus(userData.user.access_token, addressValue, active)
+      if (response.status === 'success') {
+        await this.storage.updateAddressActive(addressValue, response.active)
+      }
+      return response
+    } catch (error: unknown) {
+      console.error('Error setting address active:', error)
+      return {
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Unknown error setting address active'
+      }
     }
   }
 

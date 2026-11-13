@@ -35,6 +35,12 @@ export interface GenerateResponse {
   message?: string;
 }
 
+export interface ActiveResponse {
+  status: string;
+  active?: boolean;
+  message?: string;
+}
+
 export interface ReverseAlias {
   recipientEmail: string;
   alias: string;
@@ -68,6 +74,7 @@ export interface QwackyBackup {
     timestamp: number;
     notes?: string;
     tags?: string[];
+    active?: boolean;
     source?: AddressSource;
   }>;
   reverseAliases: Array<{

@@ -7,6 +7,7 @@ interface Address {
   lastModified?: number;
   notes?: string;
   tags?: string[];
+  active?: boolean;
   username?: string;
   source?: AddressSource;
 }
@@ -47,6 +48,7 @@ export class StorageService {
         timestamp: Date.now(),
         lastModified: Date.now(),
         notes: notes || '',
+        active: true,
         username: username,
         source: source || 'popup'
       };
@@ -291,6 +293,51 @@ export class StorageService {
       return true;
     } catch (error) {
       console.error('Error updating address tags:', error);
+      return false;
+    }
+  }
+
+  async updateAddressActive(addressValue: string, active: boolean): Promise<boolean> {
+    try {
+      const username = await this.getCurrentUsername();
+      if (!username) {
+        return false;
+      }
+
+      const accountKey = `addresses_${username}`;
+      const accountResult = await chrome.storage.local.get(accountKey);
+      const accountAddresses = accountResult[accountKey] || [];
+
+      const updatedAccountAddresses = accountAddresses.map((addr: Address) => {
+        if (addr.value === addressValue) {
+          return { ...addr, active, lastModified: addr.active != active ? Date.now() : addr.lastModified };
+        }
+        return addr;
+      });
+
+      await chrome.storage.local.set({ [accountKey]: updatedAccountAddresses });
+
+      const globalResult = await chrome.storage.local.get('generated_addresses');
+      const globalAddresses = globalResult.generated_addresses || [];
+
+      const updatedGlobalAddresses = globalAddresses.map((addr: Address) => {
+        if (addr.value === addressValue && addr.username === username) {
+          return { ...addr, active, lastModified: addr.active != active ? Date.now() : addr.lastModified };
+        }
+        return addr;
+      });
+
+      await chrome.storage.local.set({ generated_addresses: updatedGlobalAddresses });
+
+      try {
+        await this.syncService.saveAddressesToSync(username, updatedAccountAddresses);
+      } catch (syncError) {
+        console.error('Sync error (non-fatal):', syncError);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error updating address active:', error);
       return false;
     }
   }
