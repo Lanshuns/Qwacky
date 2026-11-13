@@ -125,6 +125,8 @@ const renderItem = (
   setEditingTags: React.Dispatch<React.SetStateAction<string | null>>,
   tagInputValue: string,
   setTagInputValue: React.Dispatch<React.SetStateAction<string>>,
+  activeSpinnerRunning: boolean,
+  setActiveSpinnerRunning: React.Dispatch<React.SetStateAction<boolean>>,
   onUpdateTags?: (key: string, tags: string[]) => Promise<void>,
   allTags?: string[],
   onRefreshActive?: (key: string) => Promise<void>,
@@ -168,6 +170,13 @@ const renderItem = (
     return <AddressActive>{icon}<span>{text}</span></AddressActive>
   }
 
+  // TODO: This poorly handles multiple concurrent requests and spins the icons on all items.
+  const runSpinnerOnPromise = async (promise: Promise<any>) => {
+    setActiveSpinnerRunning(true);
+    await promise
+    setActiveSpinnerRunning(false);
+  }
+
   return (
     <AddressItem key={item.key} role="listitem">
       <AddressMain>
@@ -204,12 +213,12 @@ const renderItem = (
             <MdEdit size={18} />
           </IconButton>
           { onRefreshActive && (
-            <IconButton onClick={() => onRefreshActive(item.key)} aria-label="Refresh active status" title="Refresh active status">
-              <MdRefresh size={18} />
+            <IconButton onClick={() => runSpinnerOnPromise(onRefreshActive(item.key))} aria-label="Refresh active status" title="Refresh active status">
+              <MdRefresh className={activeSpinnerRunning ? "spin" : ""} size={18} />
             </IconButton>
           )}
           { onSetActive && (
-            <IconButton onClick={() => {onSetActive(item.key, !item.active)}} aria-label="Toggle active" title="Toggle active">
+            <IconButton onClick={() => runSpinnerOnPromise(onSetActive(item.key, !item.active))} aria-label="Toggle active" title="Toggle active">
               <MdPowerSettingsNew size={18} />
             </IconButton>
           )}
@@ -334,6 +343,7 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [editingTags, setEditingTags] = useState<string | null>(null);
   const [tagInputValue, setTagInputValue] = useState('');
+  const [activeSpinnerRunning, setActiveSpinnerRunning] = useState(false);
   const notesInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -488,10 +498,11 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
       handleEditNotes, handleSaveNotes, handleCancelEdit,
       setDeleteConfirm,
       editingTags, setEditingTags, tagInputValue, setTagInputValue,
+      activeSpinnerRunning, setActiveSpinnerRunning,
       onUpdateTags, allTags,
       onRefreshActive, onSetActive
     );
-  }, [copyToClipboard, formatTime, editing, handleEditNotes, handleSaveNotes, handleCancelEdit, editingTags, tagInputValue, onUpdateTags, allTags, onRefreshActive, onSetActive]);
+  }, [copyToClipboard, formatTime, editing, handleEditNotes, handleSaveNotes, handleCancelEdit, editingTags, tagInputValue, activeSpinnerRunning, onUpdateTags, allTags, onRefreshActive, onSetActive]);
 
   const itemList = useMemo(() => {
     if (items.length === 0) {

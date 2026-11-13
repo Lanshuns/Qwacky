@@ -155,6 +155,13 @@ export const IconButton = styled(BaseIconButton)`
   svg {
     width: 18px;
     height: 18px;
+
+    &.spin {
+      @keyframes spinner {
+        to { transform: rotate(360deg); }
+      }
+      animation: 0.7s spinner 0s linear infinite;
+    }
   }
 
   &.delete {
