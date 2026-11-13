@@ -37,6 +37,7 @@ interface StoredAddress {
   timestamp: number;
   notes?: string;
   tags?: string[];
+  active?: boolean;
   source?: AddressSource;
 }
 
@@ -199,6 +200,28 @@ export const Dashboard = () => {
     }
   };
 
+  const handleRefreshAddressActive = async (key: string) => {
+    const response = await duckService.refreshAddressActive(key);
+    if (response.status === "success") {
+      setAddresses(prev => prev.map(addr =>
+        addr.value === key ? { ...addr, active: response.active } : addr
+      ));
+    } else {
+      showNotification(response.message || "Failed to refresh address active");
+    }
+  };
+
+  const handleSetAddressActive = async (key: string, active: boolean) => {
+    const response = await duckService.setAddressActive(key, active);
+    if (response.status === "success") {
+      setAddresses(prev => prev.map(addr =>
+        addr.value === key ? { ...addr, active: response.active } : addr
+      ));
+    } else {
+      showNotification(response.message || "Failed to set address active");
+    }
+  };
+
   const handleDeleteAddress = async (key: string) => {
     const success = await duckService.deleteAddress(key);
     if (success) {
@@ -318,6 +341,7 @@ export const Dashboard = () => {
       copyLabel: `Copy ${addr.value}@duck.com`,
       timestamp: addr.timestamp,
       notes: addr.notes,
+      active: addr.active,
       tags: addr.tags || [],
     })),
     [addresses]
@@ -378,6 +402,8 @@ export const Dashboard = () => {
             onClearAll={handleClearAllAddresses}
             onUpdateTags={handleUpdateAddressTags}
             allTags={allTags}
+            onRefreshActive={handleRefreshAddressActive}
+            onSetActive={handleSetAddressActive}
           />
         </>
       )}

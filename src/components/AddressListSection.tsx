@@ -1,5 +1,21 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { MdVisibility, MdVisibilityOff, MdEdit, MdCheck, MdClose, MdDelete, MdDeleteSweep, MdSearch, MdSort, MdClear, MdLabel, MdExpandMore, MdExpandLess } from "react-icons/md";
+import {
+  MdVisibility,
+  MdVisibilityOff,
+  MdEdit,
+  MdCheck,
+  MdClose,
+  MdDelete,
+  MdDeleteSweep,
+  MdSearch,
+  MdSort,
+  MdClear,
+  MdLabel,
+  MdExpandMore,
+  MdExpandLess,
+  MdPowerSettingsNew,
+  MdRefresh, MdQuestionMark, MdCheckCircle, MdCancel
+} from "react-icons/md";
 import { ConfirmDialog } from './ConfirmDialog';
 import { SectionHeader } from '../styles/SharedStyles';
 import { compareTags } from '../utils/tags';
@@ -41,7 +57,7 @@ import {
   TagInputContainer,
   TagInput,
   TagSuggestions,
-  TagSuggestionItem
+  TagSuggestionItem, AddressAttributeContainer, AddressActive
 } from '../styles/AddressListSection.styles';
 
 export interface ListItem {
@@ -53,6 +69,7 @@ export interface ListItem {
   timestamp: number;
   notes?: string;
   tags?: string[];
+  active?: boolean;
 }
 
 export interface ListConfig {
@@ -80,6 +97,8 @@ interface ItemListSectionProps {
   onAutoEditComplete?: () => void;
   onUpdateTags?: (key: string, tags: string[]) => Promise<void>;
   allTags?: string[];
+  onRefreshActive?: (key: string) => Promise<void>;
+  onSetActive?: (key: string, active: boolean) => Promise<void>;
 }
 
 interface EditingState {
@@ -106,8 +125,12 @@ const renderItem = (
   setEditingTags: React.Dispatch<React.SetStateAction<string | null>>,
   tagInputValue: string,
   setTagInputValue: React.Dispatch<React.SetStateAction<string>>,
+  activeSpinnerRunning: boolean,
+  setActiveSpinnerRunning: React.Dispatch<React.SetStateAction<boolean>>,
   onUpdateTags?: (key: string, tags: string[]) => Promise<void>,
-  allTags?: string[]
+  allTags?: string[],
+  onRefreshActive?: (key: string) => Promise<void>,
+  onSetActive?: (key: string, active: boolean) => Promise<void>
 ) => {
   const itemTags = item.tags || [];
 
@@ -130,6 +153,29 @@ const renderItem = (
     t.toLowerCase().includes(tagInputValue.toLowerCase()) &&
     !itemTags.includes(t)
   ) || [];
+
+  const renderAddressActive = () => {
+    let text = "Unknown"
+    let icon = (<MdQuestionMark size={16}/>)
+    switch (item.active) {
+      case true:
+        text = "Active"
+        icon = (<MdCheckCircle className="active" size={16}/>)
+        break;
+      case false:
+        text = "Inactive"
+        icon = (<MdCancel className="inactive" size={16}/>)
+        break;
+    }
+    return <AddressActive>{icon}<span>{text}</span></AddressActive>
+  }
+
+  // TODO: This poorly handles multiple concurrent requests and spins the icons on all items.
+  const runSpinnerOnPromise = async (promise: Promise<any>) => {
+    setActiveSpinnerRunning(true);
+    await promise
+    setActiveSpinnerRunning(false);
+  }
 
   return (
     <AddressItem key={item.key} role="listitem">
@@ -166,13 +212,26 @@ const renderItem = (
           <IconButton onClick={() => handleEditNotes(item)} aria-label="Edit notes" title="Edit notes">
             <MdEdit size={18} />
           </IconButton>
+          { onRefreshActive && (
+            <IconButton onClick={() => runSpinnerOnPromise(onRefreshActive(item.key))} aria-label="Refresh active status" title="Refresh active status">
+              <MdRefresh className={activeSpinnerRunning ? "spin" : ""} size={18} />
+            </IconButton>
+          )}
+          { onSetActive && (
+            <IconButton onClick={() => runSpinnerOnPromise(onSetActive(item.key, !item.active))} aria-label="Toggle active" title="Toggle active">
+              <MdPowerSettingsNew size={18} />
+            </IconButton>
+          )}
           <IconButton className="delete" onClick={() => setDeleteConfirm(item.key)} aria-label="Delete" title="Delete">
             <MdDelete size={18} />
           </IconButton>
         </ButtonsContainer>
         )}
       </AddressMain>
-      <AddressTime>{formatTime(item.timestamp)}</AddressTime>
+      <AddressAttributeContainer>
+        <AddressTime>{formatTime(item.timestamp)}</AddressTime>
+        {onRefreshActive && renderAddressActive()}
+      </AddressAttributeContainer>
 
       {itemTags.length > 0 && (
         <TagChipContainer>
@@ -269,7 +328,9 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
   autoEditKey,
   onAutoEditComplete,
   onUpdateTags,
-  allTags
+  allTags,
+  onRefreshActive,
+  onSetActive
 }) => {
   const [hidden, setHidden] = useState(false);
   const [editing, setEditing] = useState<EditingState | null>(null);
@@ -282,6 +343,7 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [editingTags, setEditingTags] = useState<string | null>(null);
   const [tagInputValue, setTagInputValue] = useState('');
+  const [activeSpinnerRunning, setActiveSpinnerRunning] = useState(false);
   const notesInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -436,9 +498,11 @@ export const ItemListSection: React.FC<ItemListSectionProps> = ({
       handleEditNotes, handleSaveNotes, handleCancelEdit,
       setDeleteConfirm,
       editingTags, setEditingTags, tagInputValue, setTagInputValue,
-      onUpdateTags, allTags
+      activeSpinnerRunning, setActiveSpinnerRunning,
+      onUpdateTags, allTags,
+      onRefreshActive, onSetActive
     );
-  }, [copyToClipboard, formatTime, editing, handleEditNotes, handleSaveNotes, handleCancelEdit, editingTags, tagInputValue, onUpdateTags, allTags]);
+  }, [copyToClipboard, formatTime, editing, handleEditNotes, handleSaveNotes, handleCancelEdit, editingTags, tagInputValue, activeSpinnerRunning, onUpdateTags, allTags, onRefreshActive, onSetActive]);
 
   const itemList = useMemo(() => {
     if (items.length === 0) {

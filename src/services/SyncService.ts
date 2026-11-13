@@ -7,6 +7,7 @@ interface Address {
   lastModified?: number;
   notes?: string;
   tags?: string[];
+  active?: boolean;
   username?: string;
 }
 

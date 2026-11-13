@@ -155,6 +155,13 @@ export const IconButton = styled(BaseIconButton)`
   svg {
     width: 18px;
     height: 18px;
+
+    &.spin {
+      @keyframes spinner {
+        to { transform: rotate(360deg); }
+      }
+      animation: 0.7s spinner 0s linear infinite;
+    }
   }
 
   &.delete {
@@ -250,7 +257,31 @@ export const AddressTime = styled.div`
   font-size: 12px;
   font-weight: 400;
   padding-left: 10px;
+`
+
+export const AddressActive = styled.div`
+  color: ${props => props.theme.textSecondary};
+  font-size: 12px;
+  font-weight: 400;
+  padding-left: 10px;
+  display: flex;
+  align-items: center;
+  span {
+    padding-left: 4px;
+  }
+  .inactive {
+    color: ${props => props.theme.error};
+  }
+  .active {
+    color: ${props => props.theme.success};
+  }
+`
+
+export const AddressAttributeContainer = styled.div`
   margin-top: var(--qw-time-mt, 2px);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
 `
 
 export const NotesContainer = styled.div`

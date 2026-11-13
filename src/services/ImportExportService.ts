@@ -7,6 +7,7 @@ interface Address {
   timestamp: number;
   notes?: string;
   tags?: string[];
+  active?: boolean;
   username?: string;
   source?: AddressSource;
 }
@@ -69,7 +70,7 @@ export class ImportExportService {
       return { success: false, count: 0, duplicates: 0, invalid: 0, error: 'Import data is empty or invalid' };
     }
 
-    let records: Array<{ value?: string; timestamp?: number; notes?: string; tags?: string[] }>;
+    let records: Array<{ value?: string; timestamp?: number; notes?: string; tags?: string[]; active?: boolean }>;
     try {
       const importData = JSON.parse(data);
       if (!importData.addresses || !Array.isArray(importData.addresses)) {
@@ -102,7 +103,7 @@ export class ImportExportService {
   }
 
   private async importAddressRecords(
-    records: Array<{ value?: string; timestamp?: number; notes?: string; tags?: string[]; source?: AddressSource }>
+    records: Array<{ value?: string; timestamp?: number; notes?: string; tags?: string[]; active?: boolean; source?: AddressSource }>
   ): Promise<ImportAddressesResult> {
     try {
       let invalid = 0;
@@ -204,7 +205,7 @@ export class ImportExportService {
 
   async exportBackup(selectedAccounts: string[], includeSession: boolean): Promise<{ data: string; summary: BackupSummary }> {
     try {
-      const allAddresses: Array<{ value: string; timestamp: number; notes?: string }> = [];
+      const allAddresses: Array<{ value: string; timestamp: number; notes?: string, active?: boolean }> = [];
       const allReverseAliases: Array<{ recipientEmail: string; alias: string; timestamp: number; notes?: string }> = [];
       const accountStats: BackupSummary['accounts'] = [];
 
@@ -227,6 +228,7 @@ export class ImportExportService {
           timestamp: addr.timestamp,
           notes: addr.notes || '',
           tags: addr.tags || [],
+          active: addr.active,
           ...(addr.source ? { source: addr.source } : {})
         })));
 
@@ -453,6 +455,7 @@ export class ImportExportService {
             timestamp: addr.timestamp || Date.now(),
             notes: addr.notes || '',
             tags: addr.tags || [],
+            active: addr.active,
             username,
             ...(addr.source || !addr.timestamp ? { source: addr.source || 'import' as const } : {})
           }))
