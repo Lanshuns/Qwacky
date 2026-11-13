@@ -7,8 +7,22 @@ export class AuthService {
     }
   }
 
-  async requestOTP(username: string) {
+  private async errorWrapper(fn: Function) {
     try {
+      return await fn.apply(this);
+    } catch (error) {
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        return { status: 'error', message: 'Network error. Please check your internet connection.' }
+      }
+      return {
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  }
+
+  async requestOTP(username: string) {
+    return await this.errorWrapper(async () => {
       const url = new URL('https://quack.duckduckgo.com/api/auth/loginlink');
       url.searchParams.set('user', username);
       const response = await fetch(
@@ -19,19 +33,14 @@ export class AuthService {
         return { status: 'success', needs_otp: true, message: 'OTP sent to your email!' }
       }
       if (response.status === 429) {
-        return { status: 'error', message: 'Too many requests. Please wait a moment before trying again.' }
+        throw new Error('Too many requests. Please wait a moment before trying again.');
       }
-      return { status: 'error', message: 'Failed to send OTP. Please try again later.' }
-    } catch (error) {
-      if (error instanceof TypeError && error.message === 'Failed to fetch') {
-        return { status: 'error', message: 'Network error. Please check your internet connection.' }
-      }
-      return { status: 'error', message: error instanceof Error ? error.message : 'Unknown error' }
-    }
+      throw new Error('Failed to send OTP. Please try again later.');
+    })
   }
 
   async verifyOTP(username: string, otp: string) {
-    try {
+    return await this.errorWrapper(async () => {
       const url = new URL('https://quack.duckduckgo.com/api/auth/login');
       url.searchParams.set('otp', otp);
       url.searchParams.set('user', username);
@@ -40,17 +49,17 @@ export class AuthService {
         { headers: this.headers }
       )
       if (loginResponse.status === 429) {
-        return { status: 'error', message: 'Too many requests. Please wait a moment before trying again.' }
+        throw new Error('Too many requests. Please wait a moment before trying again.');
       }
       if (!loginResponse.ok) {
-        return { status: 'error', message: 'Login failed. Please try again.' }
+        throw new Error('Login failed. Please try again.');
       }
 
       let loginData;
       try {
         loginData = await loginResponse.json();
       } catch {
-        return { status: 'error', message: 'Invalid response from server.' };
+        throw new Error('Invalid response from server.' );
       }
 
       if ('token' in loginData) {
@@ -61,14 +70,14 @@ export class AuthService {
         )
 
         if (!dashboardResponse.ok) {
-          return { status: 'error', message: 'Failed to load dashboard data.' }
+          throw new Error('Failed to load dashboard data.');
         }
 
         let dashboardData;
         try {
           dashboardData = await dashboardResponse.json();
         } catch {
-          return { status: 'error', message: 'Invalid response from server.' };
+          throw new Error('Invalid response from server.');
         }
 
         return {
@@ -78,61 +87,62 @@ export class AuthService {
           message: 'Login successful!'
         }
       }
-      
-      return { status: 'error', message: 'Invalid passphrase. Please check the passphrase in your email and try again.' }
-    } catch (error) {
-      if (error instanceof TypeError && error.message === 'Failed to fetch') {
-        return { status: 'error', message: 'Network error. Please check your internet connection.' }
-      }
-      return { status: 'error', message: error instanceof Error ? error.message : 'Unknown error' }
+
+      throw new Error('Invalid passphrase. Please check the passphrase in your email and try again.');
+    })
+  }
+
+  private async validateResponse(response: Response) {
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('Session expired. Please log in again.');
+    }
+    if (response.status === 429) {
+      throw new Error('Rate limited by DuckDuckGo. Try again later.');
+    }
+    if (!response.ok) {
+      throw new Error(`DuckDuckGo returned error ${response.status}`);
+    }
+    try {
+      return await response.json();
+    } catch {
+      throw new Error('Invalid response from server.');
     }
   }
 
-  async generateAddress(token: string) {
-    try {
-      const headers = { 
-        ...this.headers, 
-        'authorization': `Bearer ${token}`,
-        'content-type': 'application/json'
+  private async apiRequest(endpoint: string | URL | Request, token: string, init: RequestInit) {
+    const headers = {
+      ...this.headers,
+      'authorization': `Bearer ${token}`,
+      'content-type': 'application/json'
+    }
+    const response = await fetch(
+      endpoint,
+      {
+        headers,
+        ...init
       }
-      
-      const response = await fetch(
+    )
+
+    return await this.validateResponse(response)
+  }
+
+  async generateAddress(token: string) {
+    return await this.errorWrapper(async () => {
+      const data = await this.apiRequest(
         'https://quack.duckduckgo.com/api/email/addresses',
-        { 
-          method: 'POST',
-          headers
+        token,
+        {
+          method: 'POST'
         }
       )
-      
-      if (response.status === 401 || response.status === 403) {
-        return { status: 'error', message: 'Session expired. Please log in again.' }
-      }
-      if (response.status === 429) {
-        return { status: 'error', message: 'Rate limited by DuckDuckGo. Try again later.' }
-      }
-      if (!response.ok) {
-        return { status: 'error', message: `DuckDuckGo returned error ${response.status}` }
-      }
-      
-      let data;
-      try {
-        data = await response.json();
-      } catch {
-        return { status: 'error', message: 'Invalid response from server.' };
-      }
       if (data.address) {
-        return { 
-          status: 'success', 
-          address: data.address 
+        return {
+          status: 'success',
+          address: data.address
         }
       }
       throw new Error('Invalid response format')
-    } catch (error) {
-      return { 
-        status: 'error', 
-        message: error instanceof Error ? error.message : 'Unknown error' 
-      }
-    }
+    })
   }
 
   // https://github.com/duckduckgo/Android/blob/ad37f4116fde864dd1cb3b49e7d4345e0700823f/autofill/autofill-impl/src/main/java/com/duckduckgo/autofill/impl/email/service/DuckAddressStatusManagementService.kt
@@ -146,39 +156,16 @@ export class AuthService {
   // non-existing or non-owning or main address or invalid token PUT: {"error":"invalid_address_or_access_token"}
 
   async getActivationStatus(token: string, address: string) {
-    try {
-      const headers = {
-        ...this.headers,
-        'authorization': `Bearer ${token}`,
-        'content-type': 'application/json'
-      }
-
+    return await this.errorWrapper(async () => {
       const url = new URL('https://quack.duckduckgo.com/api/email/addresses');
       url.searchParams.set('address', address);
-      const response = await fetch(
+      const data = await this.apiRequest(
         url,
+        token,
         {
-          method: 'GET',
-          headers
+          method: 'GET'
         }
       )
-      if (response.status === 401 || response.status === 403) {
-        return { status: 'error', message: 'Session expired. Please log in again.' }
-      }
-      if (response.status === 429) {
-        return { status: 'error', message: 'Rate limited by DuckDuckGo. Try again later.' }
-      }
-      if (!response.ok) {
-        return { status: 'error', message: `DuckDuckGo returned error ${response.status}` }
-      }
-
-      let data;
-      try {
-        data = await response.json();
-      } catch {
-        return { status: 'error', message: 'Invalid response from server.' };
-      }
-
       if ('active' in data) {
         return {
           status: 'success',
@@ -189,49 +176,21 @@ export class AuthService {
         throw new Error(`DuckDuckGo returned error ${data.error}`);
       }
       throw new Error('Invalid response format')
-    } catch (error) {
-      return {
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
+    })
   }
 
   async setActivationStatus(token: string, address: string, active: boolean) {
-    try {
-      const headers = {
-        ...this.headers,
-        'authorization': `Bearer ${token}`,
-        'content-type': 'application/json'
-      }
-
+    return await this.errorWrapper(async () => {
       const url = new URL('https://quack.duckduckgo.com/api/email/addresses');
       url.searchParams.set('address', address);
       url.searchParams.set('active', active ? "1" : "0");
-      const response = await fetch(
+      const data = await this.apiRequest(
         url,
+        token,
         {
-          method: 'PUT',
-          headers
+          method: 'PUT'
         }
       )
-      if (response.status === 401 || response.status === 403) {
-        return { status: 'error', message: 'Session expired. Please log in again.' }
-      }
-      if (response.status === 429) {
-        return { status: 'error', message: 'Rate limited by DuckDuckGo. Try again later.' }
-      }
-      if (!response.ok) {
-        return { status: 'error', message: `DuckDuckGo returned error ${response.status}` }
-      }
-
-      let data;
-      try {
-        data = await response.json();
-      } catch {
-        return { status: 'error', message: 'Invalid response from server.' };
-      }
-
       if ('active' in data) {
         return {
           status: 'success',
@@ -242,11 +201,6 @@ export class AuthService {
         throw new Error(`DuckDuckGo returned error ${data.error}`);
       }
       throw new Error('Invalid response format')
-    } catch (error) {
-      return {
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
+    })
   }
 }
